@@ -14,9 +14,9 @@ import pick from 'lodash/pick';
 const { width, height } = Dimensions.get('window');
 
 const ASPECT_RATIO = width / height;
-const LATITUDE = 37.78825;
-const LONGITUDE = -122.4324;
-const LATITUDE_DELTA = 0.0322;
+const LATITUDE = 0;
+const LONGITUDE = 0;
+const LATITUDE_DELTA = 0.0122;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 
@@ -30,7 +30,7 @@ class odi extends React.Component {
       coords: null,
       latitude: null,
       longitude: null,
-      follow: false,
+      followUser: true,
       region: {
         latitude: LATITUDE,
         longitude: LONGITUDE,
@@ -43,19 +43,19 @@ class odi extends React.Component {
       // region: null,
     };
   }
-  watchID: ?number = null;
+  // watchID: ?number = null;
 
   componentDidMount() {
     console.log('*******componentDidMount() here*****');
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { currentPosition } = this.state
-        this.setState({ position })
-      },
-      (error) => alert(error.message),
-      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000}
-    )
+    // navigator.geolocation.getCurrentPosition(
+    //   (position) => {
+    //     const { currentPosition } = this.state
+    //     this.setState({ position })
+    //   },
+    //   (error) => alert(error.message),
+    //   {enableHighAccuracy: true, timeout: 20000, maximumAge: 500}
+    // )
 
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
@@ -69,7 +69,6 @@ class odi extends React.Component {
           routeCoordinates: routeCoordinates.concat(positionLatLngs),
           latitude: latitude,
           longitude: longitude,
-          follow: true,
           region: {
             latitude: latitude,
             longitude: longitude,
@@ -84,7 +83,8 @@ class odi extends React.Component {
         });
       },
       (error) => this.setState({ error: error.message}),
-      {enableHighAccuracy: true, timeout: 5000, maximumAge: 500}
+      {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 1}
+      //distanceFilter sets location accuracy; 4 meters
     );
     // this.watchID = navigator.geolocation.watchPosition((position) => {
     //   var lastPosition = JSON.stringify(position);
@@ -121,14 +121,9 @@ class odi extends React.Component {
     this.map.animateToRegion(this.regionNow());
   }
 
-  // randomRegion() {
-  //   const { region } = this.state;
-  //   return {
-  //     ...this.state.region,
-  //     latitude: region.latitude + ((Math.random() - 0.5) * (region.latitudeDelta / 2)),
-  //     longitude: region.longitude + ((Math.random() - 0.5) * (region.longitudeDelta / 2)),
-  //   };
-  // }
+  onToggleFollow() {
+    this.setState({ followUser: !this.state.followUser })
+  }
 
   regionNow() {
     const { region } = this.state;
@@ -151,13 +146,11 @@ class odi extends React.Component {
           ref={ref => { this.map = ref; }}
           // mapType={MAP_TYPES.TERRAIN}
           style={styles.map}
-          // initialRegion={this.state.region}
-          followUserLocation={true}//this turns on follow
-          region={this.state.region}//but this is also necessary
+          initialRegion={this.state.region}
+          // followUserLocation={this.state.followUser}//this DOES NOT work in any way
+          region={this.state.followUser ? this.state.region : null}//this enables follow
           showsUserLocation={true}
           loadingEnabled={true}
-          // onRegionChange = {() => this.goToCurrentLocation()}
-          // onRegionChange={region => this.fitCoords(region)}
         >
           <MapView.Polyline
             coordinates= {this.state.routeCoordinates}
@@ -174,23 +167,22 @@ class odi extends React.Component {
             }}>
           </MapView.Marker>
         </MapView>
+        <View style = {styles.buttonContainer}>
+          <TouchableOpacity
+            onPress={() => this.onToggleFollow()}
+            style={[styles.bubble, styles.button]}
+          >
+            <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
+          </TouchableOpacity>
+        </View>
         <View style={[styles.bubble, styles.latlng]}>
           <Text style={{ textAlign: 'center' }}>
             Latitude: {this.state.latitude},{"\n"}
             Longitude: {this.state.longitude},{"\n"}
-            Heading: {this.state.heading},{"\n"}
-            Speed: {this.state.speed},{"\n"}
-
+            Signal Strength: -{"\n"}
           </Text>
         </View>
-        <View style = {styles.buttonContainer}>
-          <TouchableOpacity
-            onPress={() => this.goToCurrentLocation()}
-            style={[styles.bubble, styles.button]}
-          >
-            <Text>Animate</Text>
-          </TouchableOpacity>
-        </View>
+
       </View>
     );
   }
@@ -220,14 +212,14 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   button: {
-    width: 80,
+    width: 100,
     paddingHorizontal: 12,
     alignItems: 'center',
     marginHorizontal: 10,
   },
   buttonContainer: {
     flexDirection: 'row',
-    marginVertical: 20,
+    marginVertical: 5,
     backgroundColor: 'transparent',
   },
 });
