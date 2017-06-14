@@ -21,17 +21,21 @@ const LATITUDE_DELTA = 0.0122;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 
+
+
 export default class Main extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
+      serverConnection: false,
       routeCoordinates: [],
       currentPosition: [],
       coords: null,
       latitude: null,
       longitude: null,
       followUser: true,
+      res: null,
       region: {
         latitude: LATITUDE,
         longitude: LONGITUDE,
@@ -64,6 +68,7 @@ export default class Main extends React.Component {
         const positionLatLngs = pick(position.coords, ['latitude', 'longitude'])
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
+        this.sendRequest(latitude, longitude)
         //on position change, move to location
 
         this.setState({
@@ -84,7 +89,7 @@ export default class Main extends React.Component {
         });
       },
       (error) => this.setState({ error: error.message}),
-      {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 1}
+      {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 20}
       //distanceFilter sets location accuracy; 4 meters
     );
     // this.watchID = navigator.geolocation.watchPosition((position) => {
@@ -92,6 +97,10 @@ export default class Main extends React.Component {
     //   this.setState({lastPosition});
     // });
     // console.log('routeCoordinates: ' + this.state.routeCoordinates)
+
+    
+
+
   }
 
   componentWillUnmount() {
@@ -125,6 +134,28 @@ export default class Main extends React.Component {
   onToggleFollow() {
     this.setState({ followUser: !this.state.followUser })
   }
+
+  sendRequest(latitude, longitude) {
+    fetch('http://faharu.com/connectdb', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        Lat: latitude,
+        Lng: longitude,
+      })
+    })
+    .then((response) => {
+        console.log('Response from server: ' + response)
+        this.setState({
+          serverConnection: true
+        })
+      }).catch((err) => {
+        console.log('AJAX error!!!');
+      })
+}
 
   regionNow() {
     const { region } = this.state;
@@ -180,7 +211,8 @@ export default class Main extends React.Component {
           <Text style={{ textAlign: 'center' }}>
             Latitude: {this.state.latitude},{"\n"}
             Longitude: {this.state.longitude},{"\n"}
-            Signal Strength: {connection.isConnected ? 'Connected' : 'Offline'}{"\n"}
+            Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}
+            Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
           </Text>
         </View>
 
