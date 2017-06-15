@@ -28,6 +28,8 @@ export default class Main extends React.Component {
     super(props);
 
     this.state = {
+      anchorStatus: false,
+      isRecording: false,
       serverConnection: false,
       routeCoordinates: [],
       currentPosition: [],
@@ -52,27 +54,23 @@ export default class Main extends React.Component {
 
   componentDidMount() {
     console.log('*******componentDidMount() here*****');
-
-    // navigator.geolocation.getCurrentPosition(
-    //   (position) => {
-    //     const { currentPosition } = this.state
-    //     this.setState({ position })
-    //   },
-    //   (error) => alert(error.message),
-    //   {enableHighAccuracy: true, timeout: 20000, maximumAge: 500}
-    // )
-
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
         const { routeCoordinates } = this.state
-        const positionLatLngs = pick(position.coords, ['latitude', 'longitude'])
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
-        this.sendRequest(latitude, longitude)
+        
+        if (this.state.isRecording && !this.state.anchorStatus) {
+          const positionLatLngs = pick(position.coords, ['latitude', 'longitude'])
+          this.sendRequest(latitude, longitude)
+          this.setState({
+            routeCoordinates: routeCoordinates.concat(positionLatLngs)
+          })
+        }
         //on position change, move to location
 
         this.setState({
-          routeCoordinates: routeCoordinates.concat(positionLatLngs),
+          // routeCoordinates: routeCoordinates.concat(positionLatLngs),
           latitude: latitude,
           longitude: longitude,
           region: {
@@ -81,26 +79,12 @@ export default class Main extends React.Component {
             latitudeDelta: LATITUDE_DELTA,
             longitudeDelta: LONGITUDE_DELTA
           }
-          // latitude: position.coords.latitude,
-          // longitude: position.coords.longitude,
-          // heading: position.coords.heading,
-          // speed: position.coords.speed,
-          // error: null,
         });
       },
       (error) => this.setState({ error: error.message}),
-      {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 20}
+      {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 10}
       //distanceFilter sets location accuracy; 4 meters
     );
-    // this.watchID = navigator.geolocation.watchPosition((position) => {
-    //   var lastPosition = JSON.stringify(position);
-    //   this.setState({lastPosition});
-    // });
-    // console.log('routeCoordinates: ' + this.state.routeCoordinates)
-
-    
-
-
   }
 
   componentWillUnmount() {
@@ -133,6 +117,11 @@ export default class Main extends React.Component {
 
   onToggleFollow() {
     this.setState({ followUser: !this.state.followUser })
+  }
+
+  recordButton() {
+    this.setState({ isRecording: !this.state.isRecording })
+    // this.savePath()
   }
 
   sendRequest(latitude, longitude) {
@@ -171,6 +160,10 @@ export default class Main extends React.Component {
 
   render() {
     console.log('routeCoordinates at render: ' + this.state.routeCoordinates);
+    let recorder = null;
+    if (this.state.isRecording) {
+      recordPolyline = <MapView.Polyline coordinates= {this.state.routeCoordinates} strokeColor= {'#1985FE'} strokeWidth= {10}/>
+    } else { recordPolyline = null}
     return (
       <View style={styles.container}>
         <MapView
@@ -184,11 +177,7 @@ export default class Main extends React.Component {
           showsUserLocation={true}
           loadingEnabled={true}
         >
-          <MapView.Polyline
-            coordinates= {this.state.routeCoordinates}
-            strokeColor= {'#1985FE'}
-            strokeWidth= {10}
-          />
+        {recordPolyline}
           <MapView.Marker
             pinColor={'green'}
             coordinate={{
@@ -206,20 +195,27 @@ export default class Main extends React.Component {
           >
             <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => this.recordButton()}
+            style={[styles.bubble, styles.button]}
+          >
+            {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
+          </TouchableOpacity>
         </View>
         <View style={[styles.bubble, styles.latlng]}>
           <Text style={{ textAlign: 'center' }}>
             Latitude: {this.state.latitude},{"\n"}
             Longitude: {this.state.longitude},{"\n"}
-            Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}
+            Recording: {this.state.isRecording ? 'ON' : 'OFF'},{"\n"}
             Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
           </Text>
         </View>
-
       </View>
+//Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}      
     );
   }
 }
+
 
 Main.propTypes = {
   provider: MapView.ProviderPropType,
