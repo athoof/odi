@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import MapView, { MAP_TYPES } from 'react-native-maps';
+import _ from 'lodash';
 import pick from 'lodash/pick';
 import { withConnection, connectionShape } from 'react-native-connection-info';
 
@@ -31,7 +32,7 @@ export default class Main extends React.Component {
       anchorStatus: false,
       isRecording: false,
       serverConnection: false,
-      routeCoordinates: [],
+      pathCoordinates: [],
       currentPosition: [],
       coords: null,
       latitude: null,
@@ -56,21 +57,22 @@ export default class Main extends React.Component {
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
-        const { routeCoordinates } = this.state
+        const { pathCoordinates } = this.state
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
         
         if (this.state.isRecording && !this.state.anchorStatus) {
-          const positionLatLngs = pick(position.coords, ['latitude', 'longitude'])
-          this.sendRequest(latitude, longitude)
+          const positionArray = null
+          positionArray = pick(position.coords, ['latitude', 'longitude'])
+          this.sendLocation(latitude, longitude, this.state.isRecording)
           this.setState({
-            routeCoordinates: routeCoordinates.concat(positionLatLngs)
+            pathCoordinates: pathCoordinates.concat(positionArray)
           })
         }
         //on position change, move to location
 
         this.setState({
-          // routeCoordinates: routeCoordinates.concat(positionLatLngs),
+          // pathCoordinates: pathCoordinates.concat(positionArray),
           latitude: latitude,
           longitude: longitude,
           region: {
@@ -91,7 +93,7 @@ export default class Main extends React.Component {
     navigator.geolocation.clearWatch(this.watchID);
   }
 
-  updateCurrent(routeCoordinates) {
+  updateCurrent(pathCoordinates) {
 
   }
 
@@ -104,7 +106,7 @@ export default class Main extends React.Component {
 
   onRegionChange(region) {
     this.setState({ region });
-    // console.log('routeCoordinates: ' + routeCoordinates);
+    // console.log('pathCoordinates: ' + pathCoordinates);
   }
 
   jumpRandom() {
@@ -119,21 +121,49 @@ export default class Main extends React.Component {
     this.setState({ followUser: !this.state.followUser })
   }
 
-  recordButton() {
-    this.setState({ isRecording: !this.state.isRecording })
-    // this.savePath()
+  startButton() {
+    if (!this.state.isRecording) {
+      this.setState({ isRecording: true })
+    }
   }
 
-  sendRequest(latitude, longitude) {
-    fetch('http://faharu.com/connectdb', {
+  recordButton() {
+    this.setState({ isRecording: !this.state.isRecording })
+
+    fetch('http://faharu.com/save', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        Lat: latitude,
-        Lng: longitude,
+        latitude: this.state.latitude,
+        longitude: this.state.longitude,
+        recording: this.state.isRecording,
+      })
+    })
+    .catch((err) => {
+      console.log('Record button AJAX error!')
+    })
+
+    console.log('RECORD BUTTON ENTRY')
+    if (this.state.isRecording) {
+      // this.sendLocation(this.state.latitude, this.state.longitude, this.state.isRecording)
+      this.setState({ pathCoordinates: [] })
+    }
+  }
+
+  sendLocation(latitude, longitude, recording) {
+    fetch('http://faharu.com/save', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        latitude: latitude,
+        longitude: longitude,
+        recording: null,
       })
     })
     .then((response) => {
@@ -144,7 +174,7 @@ export default class Main extends React.Component {
       }).catch((err) => {
         console.log('AJAX error!!!');
       })
-}
+    }
 
   regionNow() {
     const { region } = this.state;
@@ -159,10 +189,10 @@ export default class Main extends React.Component {
   }
 
   render() {
-    console.log('routeCoordinates at render: ' + this.state.routeCoordinates);
+    console.log('pathCoordinates at render: ' + this.state.pathCoordinates);
     let recorder = null;
-    if (this.state.isRecording) {
-      recordPolyline = <MapView.Polyline coordinates= {this.state.routeCoordinates} strokeColor= {'#1985FE'} strokeWidth= {10}/>
+    if (this.state.isRecording && this.state.pathCoordinates.length > 0) {
+      recordPolyline = <MapView.Polyline coordinates= {this.state.pathCoordinates} strokeColor= {'#1985FE'} strokeWidth= {10}/>
     } else { recordPolyline = null}
     return (
       <View style={styles.container}>
@@ -190,13 +220,13 @@ export default class Main extends React.Component {
         </MapView>
         <View style = {styles.buttonContainer}>
           <TouchableOpacity
-            onPress={() => this.onToggleFollow()}
+            onPress={ () => this.onToggleFollow() }
             style={[styles.bubble, styles.button]}
           >
             <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => this.recordButton()}
+            onPress={ () => this.recordButton() }
             style={[styles.bubble, styles.button]}
           >
             {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
