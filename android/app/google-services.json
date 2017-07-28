@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "895298796941",
+    "project_id": "odifaharu"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895298796941:android:e70cb277174f5fd8",
+        "android_client_info": {
+          "package_name": "com.odi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "895298796941-2p3ijkbqnv7ttgigc9vu902h0hsj1ucl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.odi",
+            "certificate_hash": "270fa35de43c463c945af88ea8ea782705ccdf83"
+          }
+        },
+        {
+          "client_id": "895298796941-qmolk65fab827dojmdbbgv24f7uuso40.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCL2BUGGOXpCOUWH0JcnMm0A4ZyypAAJ7I"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

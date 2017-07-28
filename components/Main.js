@@ -6,12 +6,14 @@ import {
   Text,
   Dimensions,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 
 import MapView, { MAP_TYPES } from 'react-native-maps';
 import _ from 'lodash';
 import pick from 'lodash/pick';
 import { withConnection, connectionShape } from 'react-native-connection-info';
+import {GoogleSignin, GoogleSigninButton} from 'react-native-google-signin';
 
 const { width, height } = Dimensions.get('window');
 
@@ -29,6 +31,8 @@ export default class Main extends React.Component {
     super(props);
 
     this.state = {
+      user: null,
+      modalVisible: true,
       anchorStatus: false,
       isRecording: false,
       serverConnection: false,
@@ -54,6 +58,7 @@ export default class Main extends React.Component {
   // watchID: ?number = null;
 
   componentDidMount() {
+    this._setupGoogleSignin();
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
@@ -188,6 +193,43 @@ export default class Main extends React.Component {
     };
   }
 
+  async _setupGoogleSignin() {
+    try {
+      await GoogleSignin.hasPlayServices({ autoResolve: true });
+      await GoogleSignin.configure({
+        webClientId: '895298796941-qmolk65fab827dojmdbbgv24f7uuso40.apps.googleusercontent.com', //https://console.developers.google.com/apis/credentials/oauthclient/895298796941-qmolk65fab827dojmdbbgv24f7uuso40.apps.googleusercontent.com?project=odifaharu
+        offlineAccess: false
+      });
+
+      const user = await GoogleSignin.currentUserAsync();
+      console.log(user);
+      this.setState({user});
+    }
+    catch(err) {
+      console.log("Play services error", err.code, err.message);
+    }
+  }
+
+  _signIn() {
+    GoogleSignin.signIn()
+    .then((user) => {
+      console.log(user);
+      this.setState({user: user});
+      this.setState({modalVisible: !this.state.modalVisible})
+    })
+    .catch((err) => {
+      console.log('WRONG SIGNIN', err);
+    })
+    .done();
+  }
+
+    _signOut() {
+    GoogleSignin.revokeAccess().then(() => GoogleSignin.signOut()).then(() => {
+      this.setState({user: null});
+    })
+    .done();
+  }
+
   render() {
     console.log('pathCoordinates at render: ' + this.state.pathCoordinates);
     let recorder = null;
@@ -240,12 +282,31 @@ export default class Main extends React.Component {
             Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
           </Text>
         </View>
+        <Modal style={styles.modal}
+          animationType={"slide"}
+          transparent={false}
+          visible={this.state.modalVisible}
+          onRequestClose={() => {alert("Modal closed")}}
+          >
+          <View style={styles.signin}>
+            <View style={{marginTop:2}}>              
+                <GoogleSigninButton
+                  style={{width: 230, height: 48, margin: 0}}
+                  size={GoogleSigninButton.Size.Standard}
+                  color={GoogleSigninButton.Color.Dark}
+                  onPress={this._signIn.bind(this)}/>
+            </View>
+          </View>
+        </Modal>
       </View>
 //Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}      
     );
   }
 }
-
+//<TouchableOpacity
+//                onPress={ () => this.setState({modalVisible: !this.state.modalVisible}) }
+//              >
+//              </TouchableOpacity>
 
 Main.propTypes = {
   provider: MapView.ProviderPropType,
@@ -253,6 +314,10 @@ Main.propTypes = {
 };
 
 const styles = StyleSheet.create({
+  modal: {
+    ...StyleSheet.absoluteFillObject,
+
+  },
   container: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
@@ -260,6 +325,13 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  signin: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(133,133,133,0.7)',
+    padding: 15,
+    margin: 0,
+    justifyContent: 'space-around',
   },
   bubble: {
     backgroundColor: 'rgba(255,255,255,0.7)',
