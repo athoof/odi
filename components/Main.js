@@ -43,6 +43,7 @@ export default class Main extends React.Component {
       longitude: null,
       followUser: true,
       res: null,
+      nodeNumber: 0,
       region: {
         latitude: LATITUDE,
         longitude: LONGITUDE,
@@ -66,12 +67,15 @@ export default class Main extends React.Component {
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
         
-        if (this.state.isRecording && !this.state.anchorStatus) {
+        if (this.state.isRecording == true && !this.state.anchorStatus) {
           const positionArray = null
           positionArray = pick(position.coords, ['latitude', 'longitude'])
-          this.sendLocation(latitude, longitude, this.state.isRecording)
+          let d = new Date();
+          let timestamp = d.getTime();
+          this.sendLocation(latitude, longitude, this.state.nodeNumber, this.state.isRecording, timestamp)
           this.setState({
-            pathCoordinates: pathCoordinates.concat(positionArray)
+            pathCoordinates: pathCoordinates.concat(positionArray),
+            nodeNumber: this.state.nodeNumber+1
           })
         }
         //on position change, move to location
@@ -126,59 +130,67 @@ export default class Main extends React.Component {
     this.setState({ followUser: !this.state.followUser })
   }
 
-  startButton() {
+  startButton() { //unused?
     if (!this.state.isRecording) {
-      this.setState({ isRecording: true })
+      this.setState({ isRecording: true})
     }
   }
 
   recordButton() {
-    this.setState({ isRecording: !this.state.isRecording })
-
-    fetch('http://faharu.com/save', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        latitude: this.state.latitude,
-        longitude: this.state.longitude,
-        recording: this.state.isRecording,
+    this.setState({ isRecording: !this.state.isRecording, nodeNumber: 0 });
+/*    // if (this.state.isRecording) {
+      fetch('http://faharu.com/save/beginpath', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          latitude: this.state.latitude,
+          longitude: this.state.longitude,
+          recording: !this.state.isRecording,
+          user: this.state.user,
+          nodeNumber: 0,
+        })
       })
-    })
-    .catch((err) => {
-      console.log('Record button AJAX error!')
-    })
-
-    console.log('RECORD BUTTON ENTRY')
-    if (this.state.isRecording) {
-      // this.sendLocation(this.state.latitude, this.state.longitude, this.state.isRecording)
-      this.setState({ pathCoordinates: [] })
-    }
+      .catch((err) => {
+        console.log('Record button AJAX error!')
+      })
+      this.setState({ nodeNumber: this.state.nodeNumber+1})
+      console.log('RECORD BUTTON ENTRY')
+      if (this.state.isRecording == false) {
+        // this.sendLocation(this.state.latitude, this.state.longitude, this.state.isRecording)
+        this.setState({ pathCoordinates: [], nodeNumber: 0 })
+      }
+    // }*/
   }
 
-  sendLocation(latitude, longitude, recording) {
-    fetch('http://faharu.com/save', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        latitude: latitude,
-        longitude: longitude,
-        recording: null,
-      })
-    })
-    .then((response) => {
-        console.log('Response from server: ' + response)
-        this.setState({
-          serverConnection: true
+  sendLocation(latitude, longitude, nodeNumber, recording, timestamp) {
+   if(this.state.isRecording == true) {    
+      fetch('http://faharu.com/save/updatepath', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          latitude: latitude,
+          longitude: longitude,
+          recording: recording,
+          user: this.state.user,
+          nodeNumber: nodeNumber,
+          timestamp: timestamp, //in seconds
         })
-      }).catch((err) => {
-        console.log('AJAX error!!!');
       })
+      .then((response) => {
+          console.log('Response from server: ' + response)
+          this.setState({
+            serverConnection: true
+          })
+        }).catch((err) => {
+          console.log('AJAX error!!!');
+        })
+      }
     }
 
   regionNow() {
