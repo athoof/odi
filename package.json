@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@shoutem/ui": "^0.14.3",
+    "feathers-cli": "^2.3.5",
     "firebase": "^4.1.1",
     "modclean": "^2.1.0",
     "moment": "^2.18.1",
@@ -16,7 +17,11 @@
     "react-native-connection-info": "^1.1.0",
     "react-native-google-signin": "^0.8.1",
     "react-native-maps": "^0.15.1",
-    "redux": "^3.6.0"
+    "react-native-socket.io": "^0.3.1",
+    "react-navigation": "^1.0.0-beta.11",
+    "redux": "^3.6.0",
+    "socket.io": "^2.0.3",
+    "socket.io-client": "^2.0.3"
   },
   "devDependencies": {
     "babel-jest": "20.0.3",

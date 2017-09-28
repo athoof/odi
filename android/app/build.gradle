@@ -135,6 +135,7 @@ android {
 }
 
 dependencies {
+    compile project(':react-native-socket.io')
     compile project(':react-native-google-signin')
     compile project(':react-native-photo-view')
     compile project(':react-native-share')

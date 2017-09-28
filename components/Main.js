@@ -15,8 +15,11 @@ import pick from 'lodash/pick';
 import { withConnection, connectionShape } from 'react-native-connection-info';
 import {GoogleSignin, GoogleSigninButton} from 'react-native-google-signin';
 
-const { width, height } = Dimensions.get('window');
+import './UserAgent';
+import io from 'socket.io-client'; // import does not work, only require does
+const socket = io('http://faharu.com:8000');
 
+const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE = 0;
 const LONGITUDE = 0;
@@ -37,8 +40,6 @@ export default class Main extends React.Component {
       isRecording: false,
       serverConnection: false,
       pathCoordinates: [],
-      currentPosition: [],
-      coords: null,
       latitude: null,
       longitude: null,
       followUser: true,
@@ -50,15 +51,12 @@ export default class Main extends React.Component {
         latitudeDelta: LATITUDE_DELTA,
         longitudeDelta: LONGITUDE_DELTA,
       }
-      // initialPosition: null,
-      // lastPosition: null,
-      // error: null,
-      // region: null,
     };
   }
   // watchID: ?number = null;
 
   componentDidMount() {
+
     this._setupGoogleSignin();
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
@@ -67,21 +65,27 @@ export default class Main extends React.Component {
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
         
-        if (this.state.isRecording == true && !this.state.anchorStatus) {
+        if (this.state.isRecording == true) {
           const positionArray = null
           positionArray = pick(position.coords, ['latitude', 'longitude'])
           let d = new Date();
           let timestamp = d.getTime();
-          this.sendLocation(latitude, longitude, this.state.nodeNumber, this.state.isRecording, timestamp)
+          this.addNode(latitude, longitude, timestamp, (connectionStatus) => {
+            this.setState({serverConnection: connectionStatus})
+          });
           this.setState({
             pathCoordinates: pathCoordinates.concat(positionArray),
             nodeNumber: this.state.nodeNumber+1
           })
+        } else {
+            this.setState({
+              pathCoordinates: [],
+              nodeNumber: 0
+            })
         }
         //on position change, move to location
 
         this.setState({
-          // pathCoordinates: pathCoordinates.concat(positionArray),
           latitude: latitude,
           longitude: longitude,
           region: {
@@ -115,7 +119,6 @@ export default class Main extends React.Component {
 
   onRegionChange(region) {
     this.setState({ region });
-    // console.log('pathCoordinates: ' + pathCoordinates);
   }
 
   jumpRandom() {
@@ -138,36 +141,44 @@ export default class Main extends React.Component {
 
   recordButton() {
     this.setState({ isRecording: !this.state.isRecording, nodeNumber: 0 });
-/*    // if (this.state.isRecording) {
-      fetch('http://faharu.com/save/beginpath', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          latitude: this.state.latitude,
-          longitude: this.state.longitude,
-          recording: !this.state.isRecording,
-          user: this.state.user,
-          nodeNumber: 0,
-        })
-      })
-      .catch((err) => {
-        console.log('Record button AJAX error!')
-      })
-      this.setState({ nodeNumber: this.state.nodeNumber+1})
-      console.log('RECORD BUTTON ENTRY')
-      if (this.state.isRecording == false) {
-        // this.sendLocation(this.state.latitude, this.state.longitude, this.state.isRecording)
-        this.setState({ pathCoordinates: [], nodeNumber: 0 })
-      }
-    // }*/
+  }
+
+  addNode(latitude, longitude, timestamp, callback) {
+    // this.setState({ serverConnection: true })
+    socket.emit('addNode', { 
+      latitude: latitude,
+      longitude: longitude,
+      recording: this.state.isRecording,
+      user: this.state.user,
+      nodeNumber: this.state.nodeNumber,
+      timestamp: timestamp,
+     });
+    if (socket.connected) {
+      callback(true)
+    }
   }
 
   sendLocation(latitude, longitude, nodeNumber, recording, timestamp) {
-   if(this.state.isRecording == true) {    
-      fetch('http://faharu.com/save/updatepath', {
+    
+    let location = JSON.stringify({
+      latitude: latitude,
+      longitude: longitude,
+      recording: recording,
+      user: this.state.user,
+      nodeNumber: nodeNumber,
+      timestamp: timestamp, //in seconds
+    });
+
+
+
+    if(this.state.isRecording == true) {    
+
+
+      // socket.on('connection', (client) => {
+      //   socket.emit('banana')
+      // })
+
+/*      fetch('http://faharu.com/save/updatepath', {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -182,14 +193,9 @@ export default class Main extends React.Component {
           timestamp: timestamp, //in seconds
         })
       })
-      .then((response) => {
-          console.log('Response from server: ' + response)
-          this.setState({
-            serverConnection: true
-          })
-        }).catch((err) => {
-          console.log('AJAX error!!!');
-        })
+      .catch((err) => {
+          console.error(err);
+        });*/
       }
     }
 
@@ -210,6 +216,7 @@ export default class Main extends React.Component {
       await GoogleSignin.hasPlayServices({ autoResolve: true });
       await GoogleSignin.configure({
         webClientId: '895298796941-qmolk65fab827dojmdbbgv24f7uuso40.apps.googleusercontent.com', //https://console.developers.google.com/apis/credentials/oauthclient/895298796941-qmolk65fab827dojmdbbgv24f7uuso40.apps.googleusercontent.com?project=odifaharu
+        // webClientId: '895298796941-ascgnd7n2e5svuef5hmv28s5h7q2d7gh.apps.googleusercontent.com', //release
         offlineAccess: false
       });
 
@@ -227,7 +234,7 @@ export default class Main extends React.Component {
     .then((user) => {
       console.log(user);
       this.setState({user: user});
-      this.setState({modalVisible: !this.state.modalVisible})
+      // this.setState({modalVisible: false})
     })
     .catch((err) => {
       console.log('WRONG SIGNIN', err);
@@ -235,7 +242,7 @@ export default class Main extends React.Component {
     .done();
   }
 
-    _signOut() {
+  _signOut() {
     GoogleSignin.revokeAccess().then(() => GoogleSignin.signOut()).then(() => {
       this.setState({user: null});
     })
@@ -243,78 +250,94 @@ export default class Main extends React.Component {
   }
 
   render() {
-    console.log('pathCoordinates at render: ' + this.state.pathCoordinates);
-    let recorder = null;
+    if (!this.state.user) {
+      return (
+        <View style={styles.container}>
+          <GoogleSigninButton
+            style={{width: 230, height: 48, margin: 0}}
+            size={GoogleSigninButton.Size.Standard}
+            color={GoogleSigninButton.Color.Dark}
+            onPress={this._signIn.bind(this)}/>
+        </View>
+      )
+    }
+
     if (this.state.isRecording && this.state.pathCoordinates.length > 0) {
       recordPolyline = <MapView.Polyline coordinates= {this.state.pathCoordinates} strokeColor= {'#1985FE'} strokeWidth= {10}/>
-    } else { recordPolyline = null}
-    return (
-      <View style={styles.container}>
-        <MapView
-          provider={this.props.provider}
-          ref={ref => { this.map = ref; }}
-          // mapType={MAP_TYPES.TERRAIN}
-          style={styles.map}
-          initialRegion={this.state.region}
-          // followUserLocation={this.state.followUser}//this DOES NOT work in any way
-          region={this.state.followUser ? this.state.region : null}//this enables follow
-          showsUserLocation={true}
-          loadingEnabled={true}
-        >
-        {recordPolyline}
-          <MapView.Marker
-            pinColor={'green'}
-            coordinate={{
-              latitude: (this.state.latitude) || -36.82339,
-              longitude: (this.state.longitude) || -73.03569,
-              heading: (this.state.heading),
-              speed: (this.state.speed),
-            }}>
-          </MapView.Marker>
-        </MapView>
-        <View style = {styles.buttonContainer}>
-          <TouchableOpacity
-            onPress={ () => this.onToggleFollow() }
-            style={[styles.bubble, styles.button]}
+    } else { recordPolyline = null }
+
+    if(this.state.user) {
+      return (
+        <View style={styles.container}>
+          <MapView
+            provider={this.props.provider}
+            ref={ref => { this.map = ref; }}
+            // mapType={MAP_TYPES.TERRAIN}
+            style={styles.map}
+            initialRegion={this.state.region}
+            // followUserLocation={this.state.followUser}//this DOES NOT work in any way
+            region={this.state.followUser ? this.state.region : null}//this enables follow
+            showsUserLocation={true}
+            loadingEnabled={true}
           >
-            <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={ () => this.recordButton() }
-            style={[styles.bubble, styles.button]}
-          >
-            {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.bubble, styles.latlng]}>
-          <Text style={{ textAlign: 'center' }}>
-            Latitude: {this.state.latitude},{"\n"}
-            Longitude: {this.state.longitude},{"\n"}
-            Recording: {this.state.isRecording ? 'ON' : 'OFF'},{"\n"}
-            Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
-          </Text>
-        </View>
-        <Modal style={styles.modal}
-          animationType={"slide"}
-          transparent={false}
-          visible={this.state.modalVisible}
-          onRequestClose={() => {alert("Modal closed")}}
-          >
-          <View style={styles.signin}>
-            <View style={{marginTop:2}}>              
-                <GoogleSigninButton
-                  style={{width: 230, height: 48, margin: 0}}
-                  size={GoogleSigninButton.Size.Standard}
-                  color={GoogleSigninButton.Color.Dark}
-                  onPress={this._signIn.bind(this)}/>
-            </View>
+          {recordPolyline}
+            <MapView.Marker
+              pinColor={'green'}
+              coordinate={{
+                latitude: (this.state.latitude) || -36.82339,
+                longitude: (this.state.longitude) || -73.03569,
+                heading: (this.state.heading),
+                speed: (this.state.speed),
+              }}>
+            </MapView.Marker>
+          </MapView>
+          <View style = {styles.buttonContainer}>
+            <TouchableOpacity
+              onPress={ () => this.onToggleFollow() }
+              style={[styles.bubble, styles.button]}
+            >
+              <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={ () => this.recordButton() }
+              style={[styles.bubble, styles.button]}
+            >
+              {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
+            </TouchableOpacity>
           </View>
-        </Modal>
-      </View>
-//Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}      
-    );
+          <View style={[styles.bubble, styles.latlng]}>
+            <Text style={{ textAlign: 'center' }}>
+              Latitude: {this.state.latitude},{"\n"}
+              Longitude: {this.state.longitude},{"\n"}
+              Recording: {this.state.isRecording ? 'ON' : 'OFF'},{"\n"}
+              Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
+              User: {this.state.user ? this.state.user.name : 'Not signed in'}{"\n"}
+            </Text>
+          </View>
+        </View>
+  //Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}      
+      );  
+    }
   }
 }
+/*
+<Modal style={styles.modal}
+  animationType={"slide"}
+  transparent={false}
+  visible={this.state.modalVisible}
+  onRequestClose={() => {alert("Sign in to proceed")}}
+  >
+  <View style={styles.signin}>
+    <View style={{marginTop:2}}>              
+        <GoogleSigninButton
+          style={{width: 230, height: 48, margin: 0}}
+          size={GoogleSigninButton.Size.Standard}
+          color={GoogleSigninButton.Color.Dark}
+          onPress={this._signIn.bind(this)}/>
+    </View>
+  </View>
+</Modal>*/
+
 //<TouchableOpacity
 //                onPress={ () => this.setState({modalVisible: !this.state.modalVisible}) }
 //              >
