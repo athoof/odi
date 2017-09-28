@@ -15,7 +15,7 @@ import pick from 'lodash/pick';
 import { withConnection, connectionShape } from 'react-native-connection-info';
 import {GoogleSignin, GoogleSigninButton} from 'react-native-google-signin';
 
-import './UserAgent';
+// import './UserAgent';
 import io from 'socket.io-client'; // import does not work, only require does
 const socket = io('http://faharu.com:8000');
 
