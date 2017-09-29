@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Modal,
+  Button,
 } from 'react-native';
 
 import MapView, { MAP_TYPES } from 'react-native-maps';
@@ -15,8 +16,12 @@ import pick from 'lodash/pick';
 import { withConnection, connectionShape } from 'react-native-connection-info';
 import {GoogleSignin, GoogleSigninButton} from 'react-native-google-signin';
 
+import SideMenu from 'react-native-side-menu';
+import Hamburger from 'react-native-hamburger';
+import Message from './Message';
+
 // import './UserAgent';
-import io from 'socket.io-client'; // import does not work, only require does
+import io from 'socket.io-client';
 const socket = io('http://faharu.com:8000');
 
 const { width, height } = Dimensions.get('window');
@@ -35,6 +40,8 @@ export default class Main extends React.Component {
 
     this.state = {
       user: null,
+      isOpen: false,
+      selectedItem: 'About',
       modalVisible: true,
       anchorStatus: false,
       isRecording: false,
@@ -53,6 +60,8 @@ export default class Main extends React.Component {
       }
     };
   }
+
+
   // watchID: ?number = null;
 
   componentDidMount() {
@@ -158,47 +167,6 @@ export default class Main extends React.Component {
     }
   }
 
-  sendLocation(latitude, longitude, nodeNumber, recording, timestamp) {
-    
-    let location = JSON.stringify({
-      latitude: latitude,
-      longitude: longitude,
-      recording: recording,
-      user: this.state.user,
-      nodeNumber: nodeNumber,
-      timestamp: timestamp, //in seconds
-    });
-
-
-
-    if(this.state.isRecording == true) {    
-
-
-      // socket.on('connection', (client) => {
-      //   socket.emit('banana')
-      // })
-
-/*      fetch('http://faharu.com/save/updatepath', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          latitude: latitude,
-          longitude: longitude,
-          recording: recording,
-          user: this.state.user,
-          nodeNumber: nodeNumber,
-          timestamp: timestamp, //in seconds
-        })
-      })
-      .catch((err) => {
-          console.error(err);
-        });*/
-      }
-    }
-
   regionNow() {
     const { region } = this.state;
     return {
@@ -249,7 +217,17 @@ export default class Main extends React.Component {
     .done();
   }
 
+  toggleSidebar(isOpen) {
+    this.setState({ isOpen })
+  }
+
+  openSidebar() {
+    this.setState({isOpen: true});
+  }
+
   render() {
+    const messageBar = <Message stat={this.state.isOpen}/>
+
     if (!this.state.user) {
       return (
         <View style={styles.container}>
@@ -268,53 +246,68 @@ export default class Main extends React.Component {
 
     if(this.state.user) {
       return (
-        <View style={styles.container}>
-          <MapView
-            provider={this.props.provider}
-            ref={ref => { this.map = ref; }}
-            // mapType={MAP_TYPES.TERRAIN}
-            style={styles.map}
-            initialRegion={this.state.region}
-            // followUserLocation={this.state.followUser}//this DOES NOT work in any way
-            region={this.state.followUser ? this.state.region : null}//this enables follow
-            showsUserLocation={true}
-            loadingEnabled={true}
-          >
-          {recordPolyline}
-            <MapView.Marker
-              pinColor={'green'}
-              coordinate={{
-                latitude: (this.state.latitude) || -36.82339,
-                longitude: (this.state.longitude) || -73.03569,
-                heading: (this.state.heading),
-                speed: (this.state.speed),
-              }}>
-            </MapView.Marker>
-          </MapView>
-          <View style = {styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={ () => this.onToggleFollow() }
-              style={[styles.bubble, styles.button]}
+        <SideMenu
+          menuPosition={'right'}
+          style={styles.sidebar}
+          menu={messageBar}
+          isOpen={this.state.isOpen}
+          onChange={isOpen => this.toggleSidebar(isOpen)}
+          // hiddenMenuOffset={16}
+          // openMenuOffset={0}
+          bounceBackOnOverdraw={true}
+          autoClosing={false}
+        >
+          <View style={styles.container}>
+
+            <MapView
+              provider={this.props.provider}
+              ref={ref => { this.map = ref; }}
+              // mapType={MAP_TYPES.TERRAIN}
+              style={styles.map}
+              initialRegion={this.state.region}
+              // followUserLocation={this.state.followUser}//this DOES NOT work in any way
+              region={this.state.followUser ? this.state.region : null}//this enables follow
+              showsUserLocation={true}
+              loadingEnabled={true}
             >
-              <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={ () => this.recordButton() }
-              style={[styles.bubble, styles.button]}
-            >
-              {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.bubble, styles.latlng]}>
-            <Text style={{ textAlign: 'center' }}>
-              Latitude: {this.state.latitude},{"\n"}
-              Longitude: {this.state.longitude},{"\n"}
-              Recording: {this.state.isRecording ? 'ON' : 'OFF'},{"\n"}
-              Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
-              User: {this.state.user ? this.state.user.name : 'Not signed in'}{"\n"}
-            </Text>
-          </View>
-        </View>
+            {recordPolyline}
+              <MapView.Marker
+                pinColor={'green'}
+                coordinate={{
+                  latitude: (this.state.latitude) || -36.82339,
+                  longitude: (this.state.longitude) || -73.03569,
+                  heading: (this.state.heading),
+                  speed: (this.state.speed),
+                }}>
+              </MapView.Marker>
+            </MapView>
+            <View style = {styles.panel}>
+              <View style = {styles.buttonContainer}>
+                <TouchableOpacity
+                  onPress={ () => this.onToggleFollow() }
+                  style={[styles.bubble, styles.button]}
+                >
+                  <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={ () => this.recordButton() }
+                  style={[styles.bubble, styles.button]}
+                >
+                  {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.bubble, styles.latlng]}>
+                <Text style={{ textAlign: 'center' }}>
+                  Latitude: {this.state.latitude},{"\n"}
+                  Longitude: {this.state.longitude},{"\n"}
+                  Recording: {this.state.isRecording ? 'ON' : 'OFF'},{"\n"}
+                  Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
+                  User: {this.state.user ? this.state.user.name : 'Not signed in'}{"\n"}
+                </Text>
+              </View>
+            </View>
+           </View>
+        </SideMenu>
   //Signal Strength: {this.state.isConnected ? 'Connected' : 'Offline'}{"\n"}      
       );  
     }
@@ -353,13 +346,26 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
 
   },
+
+  hamburger: {
+    zIndex: 20,
+    color: 'red'
+
+  },
+
+  panel: {
+    alignItems: 'center',
+  },
+
   container: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     alignItems: 'center',
+
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
   },
   signin: {
     ...StyleSheet.absoluteFillObject,
@@ -383,6 +389,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: 'center',
     marginHorizontal: 10,
+
   },
   buttonContainer: {
     flexDirection: 'row',
