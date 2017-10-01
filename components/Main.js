@@ -40,6 +40,7 @@ export default class Main extends React.Component {
 
     this.state = {
       user: null,
+      userList: ['blah'],
       isOpen: false,
       selectedItem: 'About',
       modalVisible: true,
@@ -109,6 +110,7 @@ export default class Main extends React.Component {
       {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 10}
       //distanceFilter sets location accuracy; 4 meters
     );
+    this.listUsers();
   }
 
   componentWillUnmount() {
@@ -165,6 +167,24 @@ export default class Main extends React.Component {
     if (socket.connected) {
       callback(true)
     }
+  }
+
+  getUsers(callback) {
+    socket.emit('getUsers', { 
+      user: this.state.user,
+     });
+    socket.on('receiveUsers', (response) => {
+      console.log("usr", response.userList);
+      callback(response.userList);
+    })
+  }
+
+
+  listUsers() {
+    this.getUsers((userList) => {
+      // console.log('usr', userList);
+      this.setState({userList: userList});
+    });
   }
 
   regionNow() {
@@ -226,7 +246,7 @@ export default class Main extends React.Component {
   }
 
   render() {
-    const messageBar = <Message stat={this.state.isOpen}/>
+    const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} />
 
     if (!this.state.user) {
       return (
