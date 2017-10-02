@@ -9,6 +9,7 @@ import {
   Modal,
   ScrollView,
   Image,
+  TextInput,
 } from 'react-native';
 
 import _ from 'lodash';
@@ -17,80 +18,140 @@ const socket = io('http://faharu.com:8000');
 
 
 
-export default function Message(props) {
+export default class Message extends React.Component {
+	constructor(props) {
+	  super(props);
+	
+	  this.state = {
+	  	// userList: this.props.userList,
+	  	
+	  };
+	}
 
-	// io.sockets.on('connection', (socket) => {
-	// 	socket.emit('message', {message: 'Welcome'});
-	// 	socket.on('send', (data) => {
-	// 		io.sockets.emit('message', data);
-	// 	})
-	// })
-
-	// listUsers();
-	generateUserList = () => {
+	generateUserList() {
 		var textArray = [];
-		// for (var i = 0; i < props.userList.length; i++) {
-		// 	textArray.push(<Text>{props.userList[i]}</Text>)
-		// }
-		// return textArray;
-		props.userList.forEach((user)=>{
-
+		this.props.userList.forEach((user)=>{
+			// console.log('user?', user)
 			textArray.push(
-				<View style={styles.user}>
-					<Image style={styles.photo} source={{uri: user.photo}} />
+				<TouchableOpacity style={styles.user}>
 					<Text style={styles.username}>{user.name}</Text>
-				</View>
+					<Image style={styles.photo} source={{uri: user.photo}} />
+					<View style={styles.overlay} />
+				</TouchableOpacity>
 				)
 		})
 		return textArray;
 	}
-
-	return (
-		<View style={styles.sidebar}
-			// onPress={ () =>  }
-		>
-			<Text style={styles.label}>
-				Leave a comment, 
-				or send a message
-			</Text>
-			<ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} horizontal={true}>
-				{generateUserList()}
-				{generateUserList()}
-				{generateUserList()}
-			</ScrollView>
-		</View>
-	)
+	render() {
+		return (
+			<View style={styles.sidebar}>
+				<Text style={styles.label}>
+					Messaging
+				</Text>
+				<ScrollView style={styles.recipients} contentContainerStyle={styles.contentContainer} horizontal={true}>
+					{this.generateUserList()}
+				</ScrollView>
+				<ScrollView style={styles.chatView} contentContainerStyle={styles.chatContainer}>
+					<Text style={[styles.chatBubble, styles.receivedChat]}>Receiving chat bubble</Text>
+					<Text style={styles.chatBubble}>This is an average length text message, with punctuations!</Text>
+					<Text style={styles.chatBubble}>This is an average length text message, with punctuations!</Text>
+				</ScrollView>
+				<TextInput
+					style={styles.textInput}
+					placeholder="Type a message"
+					// onChangeText={}
+				/>
+			</View>
+		)
+	}
 }
 
 const styles = StyleSheet.create({
 	sidebar: {
 		...StyleSheet.absoluteFillObject,
 		backgroundColor: 'white',
-		alignItems: 'center',
-		padding: 40,
+		// alignItems: 'center',
 	},
 	label: {
 		fontSize: 24,
-	},
-	scrollView: {
-		maxHeight: 115,
-		height: 80,
-	},
-	contentContainer: {
-		// backgroundColor: 'blue',
-		height: 175,
 		padding: 12,
 	},
-	user:{
-		width: 50,
-		height: 50,
+	textInput: {
+		color: 'gray',
+	},
+	receivedChat: {
+		marginLeft: '10%',
+	},
+	chatContainer: {
+		height: '100%',
+		justifyContent: 'flex-end',
+	},
+	chatView: {
+		backgroundColor: 'whitesmoke',
+		// alignItems: 'flex-start',
+		minWidth: '100%',
+		flex: 1,
+	},
+	chatBubble: {
+		margin: 5,
+		maxWidth: '90%',
+		minWidth: '50%',
+		width: 'auto',
+		height: 'auto',
+		padding: 20,
+		fontSize: 18,
+		color: 'gray',
+		backgroundColor: 'ivory',
+		borderBottomColor: 'steelblue', 
+		// borderBottomWidth: StyleSheet.hairlineWidth,
+		borderRadius: 18,
+		alignItems: 'flex-end',
+	},
+	recipients: {
+		maxHeight: 100,
+		padding: 15,
+		width: '100%',
+		// alignItems: 'center',
+		maxWidth: 300,
+		borderTopColor: 'gray',
+		borderBottomColor: 'gray',
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	contentContainer: {
+	    justifyContent: 'center',
+	    alignItems: 'center',
+		minWidth: '100%',
+		height: 75,
+	},
+	user: {
+		width: 75,
+		height: 75,
+		margin: 5,
 	},
 	username: {
-		lineHeight: 12,
+		lineHeight: 25,
 		textAlign: 'center',
+		position: 'absolute',
+		zIndex: 3,
+		color: 'white',
+		fontWeight: 'bold',
 	},
 	photo: {
-		width: 50,
-		height: 50,
-	}
+		width: 75,
+		height: 75,
+		borderRadius: 64,
+	},
+	overlay: {
+		flex: 1,
+		position: 'absolute',
+		left: 0,
+		top: 0,
+		opacity: 0.3,
+		backgroundColor: 'black',
+		width: 75,
+		height: 75,
+		borderRadius: 64,
+		zIndex: 2,
+	},
 })

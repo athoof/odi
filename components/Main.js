@@ -40,8 +40,8 @@ export default class Main extends React.Component {
 
     this.state = {
       user: null,
-      userList: ['blah'],
-      isOpen: false,
+      userList: [],
+      isOpen: true,
       selectedItem: 'About',
       modalVisible: true,
       anchorStatus: false,
@@ -110,7 +110,9 @@ export default class Main extends React.Component {
       {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 10}
       //distanceFilter sets location accuracy; 4 meters
     );
-    this.listUsers();
+  
+  this.listUsers();
+
   }
 
   componentWillUnmount() {
@@ -156,7 +158,7 @@ export default class Main extends React.Component {
 
   addNode(latitude, longitude, timestamp, callback) {
     // this.setState({ serverConnection: true })
-    socket.emit('addNode', { 
+    socket.emit('addNode', {
       latitude: latitude,
       longitude: longitude,
       recording: this.state.isRecording,
@@ -169,22 +171,31 @@ export default class Main extends React.Component {
     }
   }
 
-  getUsers(callback) {
+  getUsers() {
     socket.emit('getUsers', { 
       user: this.state.user,
      });
     socket.on('receiveUsers', (response) => {
-      console.log("usr", response.userList);
-      callback(response.userList);
+      // console.log("usr", response.userList);
+      // if (response) {
+      //   return response.userList;
+      // } else {
+      //   throw 'No response';
+      // }
     })
   }
 
 
   listUsers() {
-    this.getUsers((userList) => {
-      // console.log('usr', userList);
-      this.setState({userList: userList});
-    });
+    var userList = [];
+    // userList = this.getUsers();
+    socket.emit('getUsers', { 
+      user: this.state.user,
+     });
+    socket.on('receiveUsers', (response) => {
+      // console.log('usr', response.userList);
+      this.setState({userList: response.userList});
+    })
   }
 
   regionNow() {
@@ -246,6 +257,7 @@ export default class Main extends React.Component {
   }
 
   render() {
+    
     const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} />
 
     if (!this.state.user) {
