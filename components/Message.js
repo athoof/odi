@@ -23,8 +23,11 @@ export default class Message extends React.Component {
 	  super(props);
 	
 	  this.state = {
+	  	text: '',
+	  	selectedRecipient: null,
+	  	messageBuffer: [],
 	  	// userList: this.props.userList,
-	  	
+
 	  };
 	}
 
@@ -33,7 +36,10 @@ export default class Message extends React.Component {
 		this.props.userList.forEach((user)=>{
 			// console.log('user?', user)
 			textArray.push(
-				<TouchableOpacity style={styles.user}>
+				<TouchableOpacity 
+					style={styles.user}
+					onPress={() => { this.setState({selectedRecipient: user.id}) } }
+				>
 					<Text style={styles.username}>{user.name}</Text>
 					<Image style={styles.photo} source={{uri: user.photo}} />
 					<View style={styles.overlay} />
@@ -42,6 +48,32 @@ export default class Message extends React.Component {
 		})
 		return textArray;
 	}
+
+	receiveMessages() {
+		socket.emit('getMessages', { 
+		  selectedRecipient: this.state.selectedRecipient,
+		 });
+		socket.on('receiveMessages', (response) => {
+		  // console.log('usr', response.userList);
+		  this.setState({messageBuffer: response.messageBuffer});
+		})
+	}
+
+	sendMessage() {
+		let d = new Date();
+		let timestamp = d.getTime();
+		socket.emit('sendMessage', {
+			users: [this.state.user, this.state.selectedRecipient],
+			messages: [{
+				sender : this.props.user,
+				recipient : this.state.selectedRecipient,
+				messageBody : this.state.text,
+				timestamp : timestamp,
+			}]
+		});
+		// socket.on('')
+	}
+
 	render() {
 		return (
 			<View style={styles.sidebar}>
@@ -59,7 +91,8 @@ export default class Message extends React.Component {
 				<TextInput
 					style={styles.textInput}
 					placeholder="Type a message"
-					// onChangeText={}
+					onChangeText={(text) => {this.setState({text: text})} }
+					onSubmitEditing={() => { this.sendMessage(); }}
 				/>
 			</View>
 		)
@@ -70,7 +103,7 @@ const styles = StyleSheet.create({
 	sidebar: {
 		...StyleSheet.absoluteFillObject,
 		backgroundColor: 'white',
-		// alignItems: 'center',
+		alignItems: 'center',
 	},
 	label: {
 		fontSize: 24,
@@ -78,6 +111,9 @@ const styles = StyleSheet.create({
 	},
 	textInput: {
 		color: 'gray',
+		width: '100%',
+		padding: 15,
+		fontSize: 18,
 	},
 	receivedChat: {
 		marginLeft: '10%',
