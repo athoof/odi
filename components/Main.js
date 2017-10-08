@@ -40,7 +40,7 @@ export default class Main extends React.Component {
 
     this.state = {
       user: null,
-      userList: [],
+      // userList: [],
       isOpen: true,
       selectedItem: 'About',
       modalVisible: true,
@@ -110,9 +110,6 @@ export default class Main extends React.Component {
       {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 10}
       //distanceFilter sets location accuracy; 4 meters
     );
-  
-  this.listUsers();
-
   }
 
   componentWillUnmount() {
@@ -159,43 +156,21 @@ export default class Main extends React.Component {
   addNode(latitude, longitude, timestamp, callback) {
     // this.setState({ serverConnection: true })
     socket.emit('addNode', {
+      pathID: typeof this.state.pathID !== undefined ? this.state.pathID : null,
       latitude: latitude,
       longitude: longitude,
       recording: this.state.isRecording,
       user: this.state.user,
       nodeNumber: this.state.nodeNumber,
       timestamp: timestamp,
+     }, (data) => {
+      this.setState({pathID: data});
+      console.log('pathID::::::::::::::::::', data)
+      callback(data);
      });
-    if (socket.connected) {
-      callback(true)
-    }
-  }
-
-  getUsers() {
-    socket.emit('getUsers', { 
-      user: this.state.user,
-     });
-    socket.on('receiveUsers', (response) => {
-      // console.log("usr", response.userList);
-      // if (response) {
-      //   return response.userList;
-      // } else {
-      //   throw 'No response';
-      // }
-    })
-  }
-
-
-  listUsers() {
-    var userList = [];
-    // userList = this.getUsers();
-    socket.emit('getUsers', { 
-      user: this.state.user,
-     });
-    socket.on('receiveUsers', (response) => {
-      // console.log('usr', response.userList);
-      this.setState({userList: response.userList});
-    })
+    // if (socket.connected) {
+    //   callback(true)
+    // }
   }
 
   regionNow() {
@@ -220,8 +195,8 @@ export default class Main extends React.Component {
       });
 
       const user = await GoogleSignin.currentUserAsync();
-      console.log(user);
-      this.setState({user});
+      // console.log('sg:', JSON.stringify(user));
+      this.setState({user: user});
     }
     catch(err) {
       console.log("Play services error", err.code, err.message);
@@ -258,7 +233,7 @@ export default class Main extends React.Component {
 
   render() {
     
-    const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} />
+    const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} user={this.state.user} />
 
     if (!this.state.user) {
       return (

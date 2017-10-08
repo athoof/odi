@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   TextInput,
+  Button,
 } from 'react-native';
 
 import _ from 'lodash';
@@ -26,70 +27,195 @@ export default class Message extends React.Component {
 	  	text: '',
 	  	selectedRecipient: null,
 	  	messageBuffer: [],
-	  	// userList: this.props.userList,
-
+	  	messageBufferParsed: [],
+	  	userList: [],
+	  	touchableOpacityArray: [],
+	  	users: [],
 	  };
 	}
+	getUsers(callback) {
+		socket.emit('getUsers', {user: this.props.user}, (data) => {
+			// this.setState({userList: data.userList});
+			// console.log('conzDATA', JSON.stringify(data.userList))	
+			callback(data.userList);
+		});
 
-	generateUserList() {
-		var textArray = [];
-		this.props.userList.forEach((user)=>{
-			// console.log('user?', user)
-			textArray.push(
-				<TouchableOpacity 
-					style={styles.user}
-					onPress={() => { this.setState({selectedRecipient: user.id}) } }
-				>
-					<Text style={styles.username}>{user.name}</Text>
-					<Image style={styles.photo} source={{uri: user.photo}} />
-					<View style={styles.overlay} />
-				</TouchableOpacity>
-				)
-		})
-		return textArray;
 	}
-
-	receiveMessages() {
+/*
+	receiveMessages(user){
 		socket.emit('getMessages', { 
-		  selectedRecipient: this.state.selectedRecipient,
+		  selectedRecipient: user,
 		 });
 		socket.on('receiveMessages', (response) => {
 		  // console.log('usr', response.userList);
-		  this.setState({messageBuffer: response.messageBuffer});
+		  this.setState({ messageBuffer: response.messageBuffer, selectedRecipient: user.id });
 		})
 	}
-
+*/
 	sendMessage() {
 		let d = new Date();
 		let timestamp = d.getTime();
+		// let users = [this.props.user.id, this.state.selectedRecipient];
 		socket.emit('sendMessage', {
-			users: [this.state.user, this.state.selectedRecipient],
-			messages: [{
-				sender : this.props.user,
+			users: this.state.users,
+			message: {
+				sender : this.props.user.id,
 				recipient : this.state.selectedRecipient,
 				messageBody : this.state.text,
 				timestamp : timestamp,
-			}]
+			}
+		}, (data) => {
+			// let msgBf = this.state.messageBuffer;
+			// msgBf.push(newMessage);
+			// this.setState({messageBuffer: msgBf});
+/*			this.loadMessages(newMessage, (err, res) => {
+				if (err) throw err;
+				this.setState({messageBuffer: res});
+				parseMessageBuffer(newMessage)
+			})*/
+			this.loadMessages(this.state.selectedRecipient)
 		});
+
+		this.textInput.clear();
 		// socket.on('')
 	}
 
+	clearBuffer() {
+		this.setState({messageBuffer: [], messageBufferParsed: []});
+	}
+
+	loadMessages(selectedRecipient, users) {
+		if (selectedRecipient !== this.state.selectedRecipient) {
+			this.clearBuffer();
+		}
+		socket.emit('loadMessages', {
+			users: users ? users : this.state.users,
+			sender: this.props.user,
+			selectedRecipient: selectedRecipient,
+		}, (err, messageBuffer) => {
+			if (err) throw err;
+			console.log('conzMSG', JSON.stringify(messageBuffer))
+			this.setState({messageBuffer: messageBuffer})
+			this.parseMessageBuffer(messageBuffer)
+		})
+
+	}
+
+
+	parseMessageBuffer(messageBuffer) {
+		var mArr = [];
+		let buffer = messageBuffer ? messageBuffer : this.state.messageBuffer
+		if (typeof buffer !== 'undefined' && buffer !== null) {
+			// console.log('conzBUFFER', JSON.stringify(buffer))
+			buffer.messages.forEach((message) => {
+				let styleArr = [styles.chatBubble];
+				if (message.recipient == this.props.user) {
+					styleArr = [styles.chatBubble, styles.receivedChat];
+				}
+				mArr.push(<Text style={styleArr}>{message.messageBody}</Text>)
+			})
+			this.setState({messageBufferParsed: mArr});
+			if (!messageBuffer) return mArr;
+			
+		} else {
+			return <Text style={styles.chatBubble}>No messages</Text>;
+		}
+		// if (messageBuffer) {
+		// 	mArr.push(<Text style={styles.chatBubble}>newMessage.messageBody</Text>)
+		// }
+		// if (typeof this.state.messageBuffer !== 'undefined') {
+		// 	for (var i = mArr.length; i < this.state.messageBuffer.length; i++) {
+		// 		let receivedChat = false;
+		// 		if (this.state.messageBuffer[i].sender !== this.props.user) {
+		// 			receivedChat = true;
+		// 		}
+		// 		if (receivedChat) {
+		// 			mArr.push(<Text style={[styles.chatBubble, styles.receivedChat]}>{this.state.messageBuffer[i].messageBody}</Text>);
+		// 		} else {
+		// 			mArr.push(<Text style={styles.chatBubble}>{this.state.messageBuffer[i].messageBody}</Text>);
+		// 		}
+		// 		if (typeof newMessage !== 'undefined' && newMessage !== null) {
+		// 			mArr.push(<Text style={styles.chatBubble}>newMessage.messageBody</Text>)
+		// 		}
+		// 	}
+		// 	/*this.state.messageBuffer.messages.forEach((message, i) => {
+		// 		}
+		// 	})*/
+		// 	// return mArr;
+		// 	this.setState({messageBufferParsed: mArr});
+		// 	console.log('conzPARSE', this.state.messageBuffer, this.state.messageBufferParsed)
+		// } else {
+		// 	this.setState({messageBufferParsed: <Text style={styles.chatBubble}>No messages</Text>});
+		// }
+	}
+
+	selectRecipient(user) {
+		let userArr = [this.props.user.id, user];
+		userArr = userArr.sort();
+		this.setState({selectedRecipient: user, users: userArr});
+		this.loadMessages(user, userArr)
+	}
+
+/*	touchList() {
+		if (this.state.touchableOpacityArray.length > 0) {
+			// console.log('conz5', this.state.touchableOpacityArray)
+			return this.state.touchableOpacityArray
+		} else {
+			// console.log('conz4', this.state.touchableOpacityArray)
+			return (
+				<TouchableOpacity 
+					style={styles.user}
+					onPress={() => { this.selectRecipient(user.id); } }
+				>
+					<Text style={styles.username}>Nooooooooooo users</Text>
+					<View style={styles.overlay} />
+				</TouchableOpacity>
+				)
+		}
+	}*/
+
+	componentDidMount() {
+		this.getUsers((userList) => {
+			if(userList !== null) {
+			this.setState({userList: userList});
+			var touchArray = []
+			userList.forEach((user) => {
+				touchArray.push(
+					<TouchableOpacity 
+						style={styles.user}
+						onPress={() => { this.selectRecipient(user.id); } }
+					>
+						<Text style={styles.username}>{user.name}</Text>
+						<Image style={styles.photo} source={{uri: user.photo}} />
+						<View style={styles.overlay} />
+					</TouchableOpacity>
+					);
+			})
+			this.setState({touchableOpacityArray: touchArray});
+				
+			}
+
+		});
+		// this.generateUserList(this.state.userList);
+	}
+
 	render() {
+		// console.log('conz3', this.state.userList, this.state.touchableOpacityArray)
+
 		return (
 			<View style={styles.sidebar}>
 				<Text style={styles.label}>
 					Messaging
 				</Text>
 				<ScrollView style={styles.recipients} contentContainerStyle={styles.contentContainer} horizontal={true}>
-					{this.generateUserList()}
+					{this.state.touchableOpacityArray}
 				</ScrollView>
-				<ScrollView style={styles.chatView} contentContainerStyle={styles.chatContainer}>
-					<Text style={[styles.chatBubble, styles.receivedChat]}>Receiving chat bubble</Text>
-					<Text style={styles.chatBubble}>This is an average length text message, with punctuations!</Text>
-					<Text style={styles.chatBubble}>This is an average length text message, with punctuations!</Text>
+				<ScrollView style={styles.chatView} contentContainerStyle={styles.chatContainer} horizontal={false}>
+					{this.state.messageBufferParsed}
 				</ScrollView>
 				<TextInput
 					style={styles.textInput}
+					ref={(input) => { this.textInput = input }}
 					placeholder="Type a message"
 					onChangeText={(text) => {this.setState({text: text})} }
 					onSubmitEditing={() => { this.sendMessage(); }}
@@ -98,6 +224,10 @@ export default class Message extends React.Component {
 		)
 	}
 }
+
+/*<Text style={[styles.chatBubble, styles.receivedChat]}>Receiving chat bubble</Text>
+<Text style={styles.chatBubble}>This is an average length text message, with punctuations!</Text>
+<Text style={styles.chatBubble}>This is an average length text message, with punctuations!</Text>*/
 
 const styles = StyleSheet.create({
 	sidebar: {
@@ -119,7 +249,7 @@ const styles = StyleSheet.create({
 		marginLeft: '10%',
 	},
 	chatContainer: {
-		height: '100%',
+
 		justifyContent: 'flex-end',
 	},
 	chatView: {
