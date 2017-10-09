@@ -22,7 +22,7 @@ import Message from './Message';
 
 // import './UserAgent';
 import io from 'socket.io-client';
-const socket = io('http://faharu.com:8000');
+// const socket = io('http://faharu.com:8000');
 
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
@@ -60,13 +60,24 @@ export default class Main extends React.Component {
         longitudeDelta: LONGITUDE_DELTA,
       }
     };
+
+    this.socket = io('http://faharu.com:8000');
+/*    // workaround for React Native issues with some libraries (e.g. cuid, socket-io)
+    if (global.navigator && global.navigator.product === 'ReactNative') {
+        global.navigator.mimeTypes = '';
+        try {
+            global.navigator.userAgent = 'ReactNative';
+        }
+        catch (e) {
+            console.log('Tried to fake useragent, but failed. This is normal on some devices, you may ignore this error: ' + e.message);
+        }
+    }*/
   }
 
 
   // watchID: ?number = null;
 
   componentDidMount() {
-
     this._setupGoogleSignin();
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
@@ -74,12 +85,13 @@ export default class Main extends React.Component {
         const { pathCoordinates } = this.state
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
+        let d = new Date();
+        let timestamp = d.getTime();
+
         
         if (this.state.isRecording == true) {
           const positionArray = null
           positionArray = pick(position.coords, ['latitude', 'longitude'])
-          let d = new Date();
-          let timestamp = d.getTime();
           this.addNode(latitude, longitude, timestamp, (connectionStatus) => {
             this.setState({serverConnection: connectionStatus})
           });
@@ -195,8 +207,12 @@ export default class Main extends React.Component {
       });
 
       const user = await GoogleSignin.currentUserAsync();
+
       // console.log('sg:', JSON.stringify(user));
       this.setState({user: user});
+      if (user) {
+        socket.emit('userUpdate', {user: user})
+      }
     }
     catch(err) {
       console.log("Play services error", err.code, err.message);
@@ -208,6 +224,9 @@ export default class Main extends React.Component {
     .then((user) => {
       console.log(user);
       this.setState({user: user});
+      if (user) {
+        socket.emit('userUpdate', {user: user})
+      }
       // this.setState({modalVisible: false})
     })
     .catch((err) => {
@@ -233,7 +252,7 @@ export default class Main extends React.Component {
 
   render() {
     
-    const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} user={this.state.user} />
+    const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} user={this.state.user} socket={this.socket} />
 
     if (!this.state.user) {
       return (

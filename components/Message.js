@@ -14,33 +14,41 @@ import {
 } from 'react-native';
 
 import _ from 'lodash';
-import io from 'socket.io-client';
-const socket = io('http://faharu.com:8000');
+// import io from 'socket.io-client';
+// const socket = io('http://faharu.com:8000');
 
 
 
 export default class Message extends React.Component {
-	constructor(props) {
-	  super(props);
-	
-	  this.state = {
-	  	text: '',
-	  	selectedRecipient: null,
-	  	messageBuffer: [],
-	  	messageBufferParsed: [],
-	  	userList: [],
-	  	touchableOpacityArray: [],
-	  	users: [],
-	  };
-	}
-	getUsers(callback) {
-		socket.emit('getUsers', {user: this.props.user}, (data) => {
-			// this.setState({userList: data.userList});
-			// console.log('conzDATA', JSON.stringify(data.userList))	
-			callback(data.userList);
-		});
+        constructor(props) {
+            super(props);
 
-	}
+            this.state = {
+                text: '',
+                selectedRecipient: null,
+                messageBuffer: [],
+                messageBufferParsed: [],
+                userList: [],
+                touchableOpacityArray: [],
+                users: [],
+            };
+
+            this.socket = this.props.socket
+            this.socket.on('messageReceived: ' + this.props.user.id, (data) => {
+            	console.log('conz rsock', data.messageBody)
+            })
+
+        }
+        getUsers(callback) {
+            this.socket.emit('getUsers', {
+                user: this.props.user
+            }, (data) => {
+                // this.setState({userList: data.userList});
+                // console.log('conzDATA', JSON.stringify(data.userList))	
+                callback(data.userList);
+            });
+
+        }
 /*
 	receiveMessages(user){
 		socket.emit('getMessages', { 
@@ -56,7 +64,7 @@ export default class Message extends React.Component {
 		let d = new Date();
 		let timestamp = d.getTime();
 		// let users = [this.props.user.id, this.state.selectedRecipient];
-		socket.emit('sendMessage', {
+		this.socket.emit('sendMessage', {
 			users: this.state.users,
 			message: {
 				sender : this.props.user.id,
@@ -88,13 +96,13 @@ export default class Message extends React.Component {
 		if (selectedRecipient !== this.state.selectedRecipient) {
 			this.clearBuffer();
 		}
-		socket.emit('loadMessages', {
+		this.socket.emit('loadMessages', {
 			users: users ? users : this.state.users,
 			sender: this.props.user,
 			selectedRecipient: selectedRecipient,
 		}, (err, messageBuffer) => {
 			if (err) throw err;
-			console.log('conzMSG', JSON.stringify(messageBuffer))
+			// console.log('conzMSG', JSON.stringify(messageBuffer))
 			this.setState({messageBuffer: messageBuffer})
 			this.parseMessageBuffer(messageBuffer)
 		})
@@ -174,34 +182,56 @@ export default class Message extends React.Component {
 		}
 	}*/
 
+	messageListener() {
+		let eventName = 'messageReceived: ' + this.props.user.id; 
+		console.log('conzEVENT', eventName)
+		this.socket.on('eventName', (data, callback) => {
+			console.log('conzREC', data)
+			if (typeof data == 'undefined' || data == null) {
+				callback('error?')
+			} else {
+				callback(null, 'Got it');
+			}
+			callback('Nothing');
+			// if (this.state.messageBuffer) {
+			// 	let tmpBuffer = this.state.messageBuffer;
+			// 	tmpBuffer.push(data.message);
+			// 	console.log('conzDATA', data.message);
+			// 	this.parseMessageBuffer(data.message);
+				
+			// }
+		});
+	}
+	componentWillMount() {
+
+	}
+
 	componentDidMount() {
 		this.getUsers((userList) => {
 			if(userList !== null) {
-			this.setState({userList: userList});
-			var touchArray = []
-			userList.forEach((user) => {
-				touchArray.push(
-					<TouchableOpacity 
-						style={styles.user}
-						onPress={() => { this.selectRecipient(user.id); } }
-					>
-						<Text style={styles.username}>{user.name}</Text>
-						<Image style={styles.photo} source={{uri: user.photo}} />
-						<View style={styles.overlay} />
-					</TouchableOpacity>
-					);
-			})
-			this.setState({touchableOpacityArray: touchArray});
-				
+				this.setState({userList: userList});
+				var touchArray = []
+				userList.forEach((user) => {
+					touchArray.push(
+						<TouchableOpacity 
+							style={styles.user}
+							onPress={() => { this.selectRecipient(user.id); } }
+						>
+							<Text style={styles.username}>{user.name}</Text>
+							<Image style={styles.photo} source={{uri: user.photo}} />
+							<View style={styles.overlay} />
+						</TouchableOpacity>
+						);
+				})
+				this.setState({touchableOpacityArray: touchArray});
 			}
 
 		});
-		// this.generateUserList(this.state.userList);
+
 	}
 
 	render() {
 		// console.log('conz3', this.state.userList, this.state.touchableOpacityArray)
-
 		return (
 			<View style={styles.sidebar}>
 				<Text style={styles.label}>
@@ -210,7 +240,15 @@ export default class Message extends React.Component {
 				<ScrollView style={styles.recipients} contentContainerStyle={styles.contentContainer} horizontal={true}>
 					{this.state.touchableOpacityArray}
 				</ScrollView>
-				<ScrollView style={styles.chatView} contentContainerStyle={styles.chatContainer} horizontal={false}>
+				<ScrollView 
+					ref={ref => this.scrollView = ref}
+					style={styles.chatView} 
+					contentContainerStyle={styles.chatContainer} 
+					horizontal={false}
+					onContentSizeChange={(contentWidth, contentHeight) => {
+						this.scrollView.scrollToEnd({animated: true});
+					}}
+				>
 					{this.state.messageBufferParsed}
 				</ScrollView>
 				<TextInput
