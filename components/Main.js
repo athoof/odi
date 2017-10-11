@@ -21,7 +21,7 @@ import Hamburger from 'react-native-hamburger';
 import Message from './Message';
 
 // import './UserAgent';
-import io from 'socket.io-client';
+// import io from 'socket.io-client';
 // const socket = io('http://faharu.com:8000');
 
 const { width, height } = Dimensions.get('window');
@@ -31,7 +31,6 @@ const LONGITUDE = 0;
 const LATITUDE_DELTA = 0.0122;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
-
 
 
 export default class Main extends React.Component {
@@ -61,7 +60,7 @@ export default class Main extends React.Component {
       }
     };
 
-    this.socket = io('http://faharu.com:8000');
+
 /*    // workaround for React Native issues with some libraries (e.g. cuid, socket-io)
     if (global.navigator && global.navigator.product === 'ReactNative') {
         global.navigator.mimeTypes = '';
@@ -77,7 +76,26 @@ export default class Main extends React.Component {
 
   // watchID: ?number = null;
 
+  componentWillMount() {
+      
+      this.socket = new WebSocket('ws://faharu.com:8000');
+      this.socket.onopen = () => {
+        console.log('conz ::onopen')
+        this.setState({serverConnection: true})
+      }
+      // this.socket.addEventListener('message', (event) => {
+      //   console.log('conz message::', event);
+      // })
+      this.socket.onmessage = (event) => {
+        console.log('conz event::', event)
+        event = JSON.parse(event)
+      }
+
+    }
+
   componentDidMount() {
+
+
     this._setupGoogleSignin();
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
@@ -167,7 +185,8 @@ export default class Main extends React.Component {
 
   addNode(latitude, longitude, timestamp, callback) {
     // this.setState({ serverConnection: true })
-    socket.emit('addNode', {
+    let request = {
+      type: 'addNode',
       pathID: typeof this.state.pathID !== undefined ? this.state.pathID : null,
       latitude: latitude,
       longitude: longitude,
@@ -175,11 +194,15 @@ export default class Main extends React.Component {
       user: this.state.user,
       nodeNumber: this.state.nodeNumber,
       timestamp: timestamp,
-     }, (data) => {
+     };
+
+    this.socket.send(JSON.stringify(request));
+
+     /*, (data) => {
       this.setState({pathID: data});
       console.log('pathID::::::::::::::::::', data)
       callback(data);
-     });
+     });*/
     // if (socket.connected) {
     //   callback(true)
     // }
@@ -211,7 +234,11 @@ export default class Main extends React.Component {
       // console.log('sg:', JSON.stringify(user));
       this.setState({user: user});
       if (user) {
-        socket.emit('userUpdate', {user: user})
+        let request = {
+          type: 'userUpdate',
+          user: user,
+        }
+        this.socket.send(JSON.stringify(request));
       }
     }
     catch(err) {
@@ -224,9 +251,13 @@ export default class Main extends React.Component {
     .then((user) => {
       console.log(user);
       this.setState({user: user});
-      if (user) {
-        socket.emit('userUpdate', {user: user})
-      }
+      // if (user) {
+      //   let request = {
+      //     type: 'userUpdate',
+      //     user: user,
+      //   }
+      //   this.socket.send(JSON.stringify(request));
+      // }
       // this.setState({modalVisible: false})
     })
     .catch((err) => {
@@ -252,7 +283,7 @@ export default class Main extends React.Component {
 
   render() {
     
-    const messageBar = <Message stat={this.state.isOpen} userList={this.state.userList} user={this.state.user} socket={this.socket} />
+    const messageBar = <Message stat={this.state.isOpen} user={this.state.user} socket={this.socket} />
 
     if (!this.state.user) {
       return (

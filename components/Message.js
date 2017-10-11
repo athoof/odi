@@ -18,53 +18,58 @@ import _ from 'lodash';
 // const socket = io('http://faharu.com:8000');
 
 
-
 export default class Message extends React.Component {
-        constructor(props) {
-            super(props);
+	constructor(props) {
+		super(props);
 
-            this.state = {
-                text: '',
-                selectedRecipient: null,
-                messageBuffer: [],
-                messageBufferParsed: [],
-                userList: [],
-                touchableOpacityArray: [],
-                users: [],
-            };
+		this.state = {
+			text: '',
+			selectedRecipient: null,
+			messageBuffer: [],
+			messageBufferParsed: [],
+			userList: [],
+			touchableOpacityArray: [],
+			users: [],
+		};
 
-            this.socket = this.props.socket
-            this.socket.on('messageReceived: ' + this.props.user.id, (data) => {
-            	console.log('conz rsock', data.messageBody)
-            })
+		this.socket = this.props.socket
+			 /*            this.messageListener((sender, users) => {
+								if (sender && users) {
+									this.loadMessages(sender, users);
+								} else {
+									console.log('conz ERRRRROOROROROR')
+								}
+							 });*/
 
-        }
-        getUsers(callback) {
-            this.socket.emit('getUsers', {
-                user: this.props.user
-            }, (data) => {
-                // this.setState({userList: data.userList});
-                // console.log('conzDATA', JSON.stringify(data.userList))	
-                callback(data.userList);
-            });
+		// this.socket.addEventListener('message', (event) => {
+		// 	console.log('conz message::', JSON.parse(event));
+		// })
 
-        }
-/*
-	receiveMessages(user){
-		socket.emit('getMessages', { 
-		  selectedRecipient: user,
-		 });
-		socket.on('receiveMessages', (response) => {
-		  // console.log('usr', response.userList);
-		  this.setState({ messageBuffer: response.messageBuffer, selectedRecipient: user.id });
-		})
+  }
+
+
+	getUsers(callback) {
+		let request = {
+			type: 'getUsers',
+			user: this.props.user.id,
+		};
+		// console.log('conz req::', request)
+		this.socket.send(JSON.stringify(request));
+		// console.log('conz firing getUsers')
+		this.socket.onmessage = (event) => {
+			// console.log('conz :: getUsers:', event.data)
+			let data = JSON.parse(event.data);
+			// console.log('conz event.data::', data.userList);
+			callback(data.userList);
+		}
 	}
-*/
+
 	sendMessage() {
 		let d = new Date();
 		let timestamp = d.getTime();
 		// let users = [this.props.user.id, this.state.selectedRecipient];
-		this.socket.emit('sendMessage', {
+		let request = {
+			type: 'sendMessage',
 			users: this.state.users,
 			message: {
 				sender : this.props.user.id,
@@ -72,17 +77,13 @@ export default class Message extends React.Component {
 				messageBody : this.state.text,
 				timestamp : timestamp,
 			}
-		}, (data) => {
-			// let msgBf = this.state.messageBuffer;
-			// msgBf.push(newMessage);
-			// this.setState({messageBuffer: msgBf});
-/*			this.loadMessages(newMessage, (err, res) => {
-				if (err) throw err;
-				this.setState({messageBuffer: res});
-				parseMessageBuffer(newMessage)
-			})*/
+		}
+		this.socket.send(JSON.stringify(request));
+		this.socket.onmessage = (event) => {
+			let data = JSON.parse(event.data);
 			this.loadMessages(this.state.selectedRecipient)
-		});
+
+		}
 
 		this.textInput.clear();
 		// socket.on('')
@@ -92,11 +93,29 @@ export default class Message extends React.Component {
 		this.setState({messageBuffer: [], messageBufferParsed: []});
 	}
 
-	loadMessages(selectedRecipient, users) {
+	loadMessages(selectedRecipient) {
+		let userArr = [this.props.user.id, selectedRecipient];
+		userArr = userArr.sort();
 		if (selectedRecipient !== this.state.selectedRecipient) {
 			this.clearBuffer();
 		}
-		this.socket.emit('loadMessages', {
+		let request = {
+			type: 'loadMessages',
+			users: userArr ? userArr : this.state.users,
+			// sender: this.props.user.id,
+			// selectedRecipient: selectedRecipient,
+		};
+
+		this.socket.send(JSON.stringify(request));
+		this.socket.onmessage = (event) => {
+			let data = JSON.parse(event.data);
+			console.log('conz loadMessages::', data.messageBuffer)
+			this.setState({messageBuffer: data.messageBuffer, selectedRecipient: selectedRecipient, users: userArr});
+			// this.setState({selectedRecipient: user, users: userArr});
+
+			this.parseMessageBuffer(data.messageBuffer);
+		}
+/*		this.socket.send('loadMessages', {
 			users: users ? users : this.state.users,
 			sender: this.props.user,
 			selectedRecipient: selectedRecipient,
@@ -105,7 +124,7 @@ export default class Message extends React.Component {
 			// console.log('conzMSG', JSON.stringify(messageBuffer))
 			this.setState({messageBuffer: messageBuffer})
 			this.parseMessageBuffer(messageBuffer)
-		})
+		})*/
 
 	}
 
@@ -161,7 +180,15 @@ export default class Message extends React.Component {
 		let userArr = [this.props.user.id, user];
 		userArr = userArr.sort();
 		this.setState({selectedRecipient: user, users: userArr});
-		this.loadMessages(user, userArr)
+		this.loadMessages(user, userArr);
+		// this.socket.onmessage = (event) => {
+		// 	let data = JSON.parse(event.data);
+		// 	console.log('conz selectRecipient::', data.messageBuffer)
+
+		// }
+/*		this.socket.onmessage('messageReceived:' + this.props.user.id, (data) => {
+			console.log('conz Message received', data);
+		})*/
 	}
 
 /*	touchList() {
@@ -182,17 +209,23 @@ export default class Message extends React.Component {
 		}
 	}*/
 
-	messageListener() {
+/*	messageListener(callback) {
+
+		// this.socket.onmessage(this.props.user.id, (data, callback) => {
+		// 	console.log('conz Received:: ' + data.messageBody)
+		// 	callback(null, data.messageBody)
+		// })
 		let eventName = 'messageReceived: ' + this.props.user.id; 
-		console.log('conzEVENT', eventName)
-		this.socket.on('eventName', (data, callback) => {
+		// console.log('conzEVENT (not fired yet)', eventName)
+		this.socket.onmessage(eventName, (data, cb) => {
 			console.log('conzREC', data)
 			if (typeof data == 'undefined' || data == null) {
-				callback('error?')
+				console.log('conz error?')
 			} else {
-				callback(null, 'Got it');
+				cb(null, eventName);
 			}
-			callback('Nothing');
+			// console.log('conz Nothing');
+			callback(data.message.sender, this.props.users);
 			// if (this.state.messageBuffer) {
 			// 	let tmpBuffer = this.state.messageBuffer;
 			// 	tmpBuffer.push(data.message);
@@ -201,32 +234,39 @@ export default class Message extends React.Component {
 				
 			// }
 		});
-	}
+	}*/
 	componentWillMount() {
-
+		// this.socket.onopen = () => {
+		// 	console.log('conz onopen::')
+		// }
 	}
 
 	componentDidMount() {
-		this.getUsers((userList) => {
-			if(userList !== null) {
-				this.setState({userList: userList});
-				var touchArray = []
-				userList.forEach((user) => {
-					touchArray.push(
-						<TouchableOpacity 
-							style={styles.user}
-							onPress={() => { this.selectRecipient(user.id); } }
-						>
-							<Text style={styles.username}>{user.name}</Text>
-							<Image style={styles.photo} source={{uri: user.photo}} />
-							<View style={styles.overlay} />
-						</TouchableOpacity>
-						);
-				})
-				this.setState({touchableOpacityArray: touchArray});
-			}
+		// console.log('conz', this.props.user)
+		this.socket.onopen = () => {
+			this.getUsers((userList) => {
+				// console.log('conz getUsers::', userList)
+				if(userList !== null) {
+					this.setState({userList: userList});
+					var touchArray = []
+					userList.forEach((user) => {
+						touchArray.push(
+							<TouchableOpacity 
+								style={styles.user}
+								onPress={() => { this.loadMessages(user.id); } }
+							>
+								<Text style={styles.username}>{user.name}</Text>
+								<Image style={styles.photo} source={{uri: user.photo}} />
+								<View style={styles.overlay} />
+							</TouchableOpacity>
+							);
+					})
+					this.setState({touchableOpacityArray: touchArray});
+				}
 
-		});
+			});
+			
+		}
 
 	}
 
@@ -323,8 +363,8 @@ const styles = StyleSheet.create({
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
 	contentContainer: {
-	    justifyContent: 'center',
-	    alignItems: 'center',
+		 justifyContent: 'center',
+		 alignItems: 'center',
 		minWidth: '100%',
 		height: 75,
 	},
