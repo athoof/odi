@@ -51,6 +51,7 @@ export default class Message extends React.Component {
 	getUsers(callback) {
 		let request = {
 			type: 'getUsers',
+			client: this.props.user.id,
 			user: this.props.user.id,
 		};
 		// console.log('conz req::', request)
@@ -70,6 +71,7 @@ export default class Message extends React.Component {
 		// let users = [this.props.user.id, this.state.selectedRecipient];
 		let request = {
 			type: 'sendMessage',
+			client: this.props.user.id,
 			users: this.state.users,
 			message: {
 				sender : this.props.user.id,
@@ -101,6 +103,7 @@ export default class Message extends React.Component {
 		}
 		let request = {
 			type: 'loadMessages',
+			client: this.props.user.id,
 			users: userArr ? userArr : this.state.users,
 			// sender: this.props.user.id,
 			// selectedRecipient: selectedRecipient,
