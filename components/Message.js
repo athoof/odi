@@ -30,20 +30,14 @@ export default class Message extends React.Component {
 			userList: [],
 			touchableOpacityArray: [],
 			users: [],
+			channel: 'lobby',
 		};
 
-		this.socket = this.props.socket
-			 /*            this.messageListener((sender, users) => {
-								if (sender && users) {
-									this.loadMessages(sender, users);
-								} else {
-									console.log('conz ERRRRROOROROROR')
-								}
-							 });*/
+		// this.socket = this.props.socket;
 
-		// this.socket.addEventListener('message', (event) => {
-		// 	console.log('conz message::', JSON.parse(event));
-		// })
+
+
+      // this.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
 
   }
 
@@ -51,7 +45,7 @@ export default class Message extends React.Component {
 	getUsers(callback) {
 		let request = {
 			type: 'getUsers',
-			client: this.props.user.id,
+			fromClient: this.props.user.id,
 			user: this.props.user.id,
 		};
 		// console.log('conz req::', request)
@@ -68,10 +62,9 @@ export default class Message extends React.Component {
 	sendMessage() {
 		let d = new Date();
 		let timestamp = d.getTime();
-		// let users = [this.props.user.id, this.state.selectedRecipient];
 		let request = {
 			type: 'sendMessage',
-			client: this.props.user.id,
+			fromClient: this.props.user.id,
 			users: this.state.users,
 			message: {
 				sender : this.props.user.id,
@@ -88,7 +81,6 @@ export default class Message extends React.Component {
 		}
 
 		this.textInput.clear();
-		// socket.on('')
 	}
 
 	clearBuffer() {
@@ -103,10 +95,8 @@ export default class Message extends React.Component {
 		}
 		let request = {
 			type: 'loadMessages',
-			client: this.props.user.id,
+			fromClient: this.props.user.id,
 			users: userArr ? userArr : this.state.users,
-			// sender: this.props.user.id,
-			// selectedRecipient: selectedRecipient,
 		};
 
 		this.socket.send(JSON.stringify(request));
@@ -118,16 +108,6 @@ export default class Message extends React.Component {
 
 			this.parseMessageBuffer(data.messageBuffer);
 		}
-/*		this.socket.send('loadMessages', {
-			users: users ? users : this.state.users,
-			sender: this.props.user,
-			selectedRecipient: selectedRecipient,
-		}, (err, messageBuffer) => {
-			if (err) throw err;
-			// console.log('conzMSG', JSON.stringify(messageBuffer))
-			this.setState({messageBuffer: messageBuffer})
-			this.parseMessageBuffer(messageBuffer)
-		})*/
 
 	}
 
@@ -150,33 +130,6 @@ export default class Message extends React.Component {
 		} else {
 			return <Text style={styles.chatBubble}>No messages</Text>;
 		}
-		// if (messageBuffer) {
-		// 	mArr.push(<Text style={styles.chatBubble}>newMessage.messageBody</Text>)
-		// }
-		// if (typeof this.state.messageBuffer !== 'undefined') {
-		// 	for (var i = mArr.length; i < this.state.messageBuffer.length; i++) {
-		// 		let receivedChat = false;
-		// 		if (this.state.messageBuffer[i].sender !== this.props.user) {
-		// 			receivedChat = true;
-		// 		}
-		// 		if (receivedChat) {
-		// 			mArr.push(<Text style={[styles.chatBubble, styles.receivedChat]}>{this.state.messageBuffer[i].messageBody}</Text>);
-		// 		} else {
-		// 			mArr.push(<Text style={styles.chatBubble}>{this.state.messageBuffer[i].messageBody}</Text>);
-		// 		}
-		// 		if (typeof newMessage !== 'undefined' && newMessage !== null) {
-		// 			mArr.push(<Text style={styles.chatBubble}>newMessage.messageBody</Text>)
-		// 		}
-		// 	}
-		// 	/*this.state.messageBuffer.messages.forEach((message, i) => {
-		// 		}
-		// 	})*/
-		// 	// return mArr;
-		// 	this.setState({messageBufferParsed: mArr});
-		// 	console.log('conzPARSE', this.state.messageBuffer, this.state.messageBufferParsed)
-		// } else {
-		// 	this.setState({messageBufferParsed: <Text style={styles.chatBubble}>No messages</Text>});
-		// }
 	}
 
 	selectRecipient(user) {
@@ -184,64 +137,20 @@ export default class Message extends React.Component {
 		userArr = userArr.sort();
 		this.setState({selectedRecipient: user, users: userArr});
 		this.loadMessages(user, userArr);
-		// this.socket.onmessage = (event) => {
-		// 	let data = JSON.parse(event.data);
-		// 	console.log('conz selectRecipient::', data.messageBuffer)
-
-		// }
-/*		this.socket.onmessage('messageReceived:' + this.props.user.id, (data) => {
-			console.log('conz Message received', data);
-		})*/
 	}
 
-/*	touchList() {
-		if (this.state.touchableOpacityArray.length > 0) {
-			// console.log('conz5', this.state.touchableOpacityArray)
-			return this.state.touchableOpacityArray
-		} else {
-			// console.log('conz4', this.state.touchableOpacityArray)
-			return (
-				<TouchableOpacity 
-					style={styles.user}
-					onPress={() => { this.selectRecipient(user.id); } }
-				>
-					<Text style={styles.username}>Nooooooooooo users</Text>
-					<View style={styles.overlay} />
-				</TouchableOpacity>
-				)
+	connectSocket() {
+		if (this.socket) {
+			
 		}
-	}*/
+      this.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
+	}
 
-/*	messageListener(callback) {
-
-		// this.socket.onmessage(this.props.user.id, (data, callback) => {
-		// 	console.log('conz Received:: ' + data.messageBody)
-		// 	callback(null, data.messageBody)
-		// })
-		let eventName = 'messageReceived: ' + this.props.user.id; 
-		// console.log('conzEVENT (not fired yet)', eventName)
-		this.socket.onmessage(eventName, (data, cb) => {
-			console.log('conzREC', data)
-			if (typeof data == 'undefined' || data == null) {
-				console.log('conz error?')
-			} else {
-				cb(null, eventName);
-			}
-			// console.log('conz Nothing');
-			callback(data.message.sender, this.props.users);
-			// if (this.state.messageBuffer) {
-			// 	let tmpBuffer = this.state.messageBuffer;
-			// 	tmpBuffer.push(data.message);
-			// 	console.log('conzDATA', data.message);
-			// 	this.parseMessageBuffer(data.message);
-				
-			// }
-		});
-	}*/
 	componentWillMount() {
 		// this.socket.onopen = () => {
 		// 	console.log('conz onopen::')
 		// }
+		this.connectSocket();
 	}
 
 	componentDidMount() {

@@ -78,7 +78,7 @@ export default class Main extends React.Component {
 
   componentWillMount() {
       
-      this.socket = new WebSocket('ws://faharu.com:8000');
+/*      this.socket = new WebSocket('ws://faharu.com:8000');
       this.socket.onopen = () => {
         console.log('conz ::onopen')
         this.setState({serverConnection: true})
@@ -89,7 +89,7 @@ export default class Main extends React.Component {
       this.socket.onmessage = (event) => {
         console.log('conz event::', event)
         event = JSON.parse(event)
-      }
+      }*/
 
     }
 
@@ -283,7 +283,7 @@ export default class Main extends React.Component {
 
   render() {
     
-    const messageBar = <Message stat={this.state.isOpen} user={this.state.user} socket={this.socket} />
+    const messageBar = <Message stat={this.state.isOpen} user={this.state.user} />
 
     if (!this.state.user) {
       return (
