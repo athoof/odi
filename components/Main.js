@@ -39,6 +39,7 @@ export default class Main extends React.Component {
 
     this.state = {
       user: null,
+      userList: [],
       // userList: [],
       isOpen: true,
       selectedItem: 'About',
@@ -60,6 +61,9 @@ export default class Main extends React.Component {
       }
     };
 
+    this.socket = new WebSocket('ws://faharu.com:8000');
+    // console.log('conz user::', this.state.user);
+
 
 /*    // workaround for React Native issues with some libraries (e.g. cuid, socket-io)
     if (global.navigator && global.navigator.product === 'ReactNative') {
@@ -70,14 +74,16 @@ export default class Main extends React.Component {
         catch (e) {
             console.log('Tried to fake useragent, but failed. This is normal on some devices, you may ignore this error: ' + e.message);
         }
-    }*/
+    }
   }
 
 
   // watchID: ?number = null;
 
   componentWillMount() {
-      
+
+
+
 /*      this.socket = new WebSocket('ws://faharu.com:8000');
       this.socket.onopen = () => {
         console.log('conz ::onopen')
@@ -91,12 +97,54 @@ export default class Main extends React.Component {
         event = JSON.parse(event)
       }*/
 
+  }
+
+  onAddNode(socket) {
+    socket.onmessage = (event) => {
+      let data = JSON.parse(event.data);
+      if (data.type == 'onAddNode') {
+        this.setState({pathID: data.pathID, serverConnection: true})
+        // this.onAddNode(data.recipient, data.pathID);
+      }
     }
+  }
+  
+  requestUserList() {
+    let request = {
+      type: 'getUsers',
+      fromClient: this.state.user.id,
+      user: this.state.user.id,
+    };
+    // console.log('conz req::', request)
+    this.socket.send(JSON.stringify(request));
+    console.log('conz :: user.id', JSON.stringify(this.state.user.id))
+/*    this.socket.onopen = () => {
+      console.log('conz::onopen1')
+      let request = {
+        type: 'getUsers',
+        fromClient: user,
+        user: user,
+      };
+      this.socket.send(JSON.stringify(request));
+      // this.onAddNode(this.socket);    
+    }*/
+    /*this.socket.onmessage = (event) => {
+      // console.log('conz :: getUsers:', event.data)
+      let data = JSON.parse(event.data);
+      // console.log('conz event.data::', data.userList);
+      this.setState({userList: data.userList});
+      console.log('conz data.userList', this.state.userList)
+    }*/
+  }
 
   componentDidMount() {
-
-
+    // this.socket = new WebSocket('ws://faharu.com:8000');
     this._setupGoogleSignin();
+    if (this.state.user !== null) {
+      console.log('conz this.state.user ::', this.state.user)
+      this.requestUserList();
+    }
+
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
@@ -110,9 +158,10 @@ export default class Main extends React.Component {
         if (this.state.isRecording == true) {
           const positionArray = null
           positionArray = pick(position.coords, ['latitude', 'longitude'])
-          this.addNode(latitude, longitude, timestamp, (connectionStatus) => {
+/*          this.addNode(latitude, longitude, timestamp, (connectionStatus) => {
             this.setState({serverConnection: connectionStatus})
-          });
+          });*/
+          this.addNode(latitude, longitude, timestamp);
           this.setState({
             pathCoordinates: pathCoordinates.concat(positionArray),
             nodeNumber: this.state.nodeNumber+1
@@ -140,6 +189,17 @@ export default class Main extends React.Component {
       {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 10}
       //distanceFilter sets location accuracy; 4 meters
     );
+
+
+
+
+    this.socket.onmessage = (event) => {
+      let data = JSON.parse(event.data);
+      if (data.type == 'onAddNode') {
+        this.setState({pathID: data.pathID, serverConnection: true})
+        // this.onAddNode(data.recipient, data.pathID);
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -150,40 +210,40 @@ export default class Main extends React.Component {
 
   }
 
-  fitCoords(region) {
+/*  fitCoords(region) {
     this.map.fitToCoordinates(region, {
       edgePadding: DEFAULT_PADDING,
       animated: true,
     });
-  }
+  }*/
 
-  onRegionChange(region) {
+/*  onRegionChange(region) {
     this.setState({ region });
   }
-
-  jumpRandom() {
+*/
+/*  jumpRandom() {
     this.setState({ region: this.regionNow() });
-  }
-
+  }*/
+/*
   goToCurrentLocation() {
     this.map.animateToRegion(this.regionNow());
-  }
+  }*/
 
   onToggleFollow() {
     this.setState({ followUser: !this.state.followUser })
   }
 
-  startButton() { //unused?
+/*  startButton() { //unused?
     if (!this.state.isRecording) {
       this.setState({ isRecording: true})
     }
-  }
+  }*/
 
   recordButton() {
     this.setState({ isRecording: !this.state.isRecording, nodeNumber: 0 });
   }
 
-  addNode(latitude, longitude, timestamp, callback) {
+  addNode(latitude, longitude, timestamp) {
     // this.setState({ serverConnection: true })
     let request = {
       type: 'addNode',
@@ -197,15 +257,6 @@ export default class Main extends React.Component {
      };
 
     this.socket.send(JSON.stringify(request));
-
-     /*, (data) => {
-      this.setState({pathID: data});
-      console.log('pathID::::::::::::::::::', data)
-      callback(data);
-     });*/
-    // if (socket.connected) {
-    //   callback(true)
-    // }
   }
 
   regionNow() {
@@ -230,16 +281,20 @@ export default class Main extends React.Component {
       });
 
       const user = await GoogleSignin.currentUserAsync();
-
-      // console.log('sg:', JSON.stringify(user));
+      // this.requestUserList(JSON.stringify(user.id));
       this.setState({user: user});
-      if (user) {
+      // console.log('conz::user.id::', JSON.stringify(user.id));
+      if (typeof user !== 'undefined' & user !== null) {
+        // console.log('conz signed in ::', user.id);
+        this.requestUserList();
+      }
+    /*      if (user) {
         let request = {
           type: 'userUpdate',
           user: user,
         }
         this.socket.send(JSON.stringify(request));
-      }
+      }*/
     }
     catch(err) {
       console.log("Play services error", err.code, err.message);
@@ -249,15 +304,18 @@ export default class Main extends React.Component {
   _signIn() {
     GoogleSignin.signIn()
     .then((user) => {
-      console.log(user);
+      // console.log('conz user::', user.id);
       this.setState({user: user});
-      // if (user) {
-      //   let request = {
-      //     type: 'userUpdate',
-      //     user: user,
-      //   }
-      //   this.socket.send(JSON.stringify(request));
-      // }
+      if (typeof user !== 'undefined' & user !== null) {
+        this.requestUserList();
+      }
+/*      if (user) {
+        let request = {
+          type: 'userUpdate',
+          user: user,
+        }
+        this.socket.send(JSON.stringify(request));
+      }*/
       // this.setState({modalVisible: false})
     })
     .catch((err) => {
@@ -283,7 +341,7 @@ export default class Main extends React.Component {
 
   render() {
     
-    const messageBar = <Message stat={this.state.isOpen} user={this.state.user} />
+    const messageBar = <Message user={this.state.user} socket={this.socket} userList={this.state.userList} />
 
     if (!this.state.user) {
       return (

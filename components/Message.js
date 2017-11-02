@@ -33,31 +33,16 @@ export default class Message extends React.Component {
 			channel: 'lobby',
 		};
 
-		// this.socket = this.props.socket;
+		// this.props.socket = this.props.socket;
 
 
 
-      // this.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
+      // this.props.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
 
   }
 
 
-	getUsers(callback) {
-		let request = {
-			type: 'getUsers',
-			fromClient: this.props.user.id,
-			user: this.props.user.id,
-		};
-		// console.log('conz req::', request)
-		this.socket.send(JSON.stringify(request));
-		// console.log('conz firing getUsers')
-		this.socket.onmessage = (event) => {
-			// console.log('conz :: getUsers:', event.data)
-			let data = JSON.parse(event.data);
-			// console.log('conz event.data::', data.userList);
-			callback(data.userList);
-		}
-	}
+
 
 	sendMessage() {
 		let d = new Date();
@@ -73,12 +58,12 @@ export default class Message extends React.Component {
 				timestamp : timestamp,
 			}
 		}
-		this.socket.send(JSON.stringify(request));
-		this.socket.onmessage = (event) => {
-			let data = JSON.parse(event.data);
-			this.loadMessages(this.state.selectedRecipient)
+		this.props.socket.send(JSON.stringify(request));
+		// this.props.socket.onmessage = (event) => {
+		// 	let data = JSON.parse(event.data);
+		this.requestLoadMessages(this.state.selectedRecipient)
 
-		}
+		// }
 
 		this.textInput.clear();
 	}
@@ -86,11 +71,31 @@ export default class Message extends React.Component {
 	clearBuffer() {
 		this.setState({messageBuffer: [], messageBufferParsed: []});
 	}
+/*
+	requestUserList() {
+		let request = {
+			type: 'getUsers',
+			fromClient: this.props.user.id,
+			user: this.props.user.id,
+		};
+		// console.log('conz req::', request)
+		this.props.socket.send(JSON.stringify(request));
+		console.log('conz :: requestUserList')
+		this.props.socket.onmessage = (event) => {
+			// console.log('conz :: getUsers:', event.data)
+			let data = JSON.parse(event.data);
+			// console.log('conz event.data::', data.userList);
+			this.setState({userList: data.userList});
+			console.log('conz data.userList', this.state.userList)
+		}
+	}
+*/
 
-	loadMessages(selectedRecipient) {
+	requestLoadMessages(selectedRecipient) {
 		let userArr = [this.props.user.id, selectedRecipient];
 		userArr = userArr.sort();
 		if (selectedRecipient !== this.state.selectedRecipient) {
+			console.log('conz selectedRecipient does not match', selectedRecipient, this.state.selectedRecipient)
 			this.clearBuffer();
 		}
 		let request = {
@@ -99,16 +104,7 @@ export default class Message extends React.Component {
 			users: userArr ? userArr : this.state.users,
 		};
 
-		this.socket.send(JSON.stringify(request));
-		this.socket.onmessage = (event) => {
-			let data = JSON.parse(event.data);
-			console.log('conz loadMessages::', data.messageBuffer)
-			this.setState({messageBuffer: data.messageBuffer, selectedRecipient: selectedRecipient, users: userArr});
-			// this.setState({selectedRecipient: user, users: userArr});
-
-			this.parseMessageBuffer(data.messageBuffer);
-		}
-
+		this.props.socket.send(JSON.stringify(request));
 	}
 
 
@@ -135,52 +131,127 @@ export default class Message extends React.Component {
 	selectRecipient(user) {
 		let userArr = [this.props.user.id, user];
 		userArr = userArr.sort();
-		this.setState({selectedRecipient: user, users: userArr});
-		this.loadMessages(user, userArr);
+		this.setState({selectedRecipient: user, users: userArr}, () => {
+			this.requestLoadMessages(this.state.selectedRecipient);
+		});
 	}
 
-	connectSocket() {
-		if (this.socket) {
-			
+	onLoadMessages(messageBuffer, users) {
+		// this.requestLoadMessages(this.state.selectedRecipient);
+		// console.log('conz loadMessages::', data.messageBuffer)
+		this.setState({
+			messageBuffer: messageBuffer, 
+			// selectedRecipient: this.state.selectedRecipient, 
+			users: users
+		});
+		console.log('conz::onLoadMessages', messageBuffer)
+		this.parseMessageBuffer(messageBuffer);
+	}
+
+	onAddNode() {
+
+	}
+	
+	onUserUpdate() {
+
+	}
+
+	makeTouchableOpacity(userList, callback) {
+		if(userList !== null) {
+			console.log('conz userList', userList)
+			this.setState({userList: userList});
+			var touchArray = []
+			userList.forEach((user) => {
+				touchArray.push(
+					<TouchableOpacity 
+						style={styles.user}
+						onPress={() => { this.selectRecipient(user.id); } }
+					>
+						<Text style={styles.username}>{user.name}</Text>
+						<Image style={styles.photo} source={{uri: user.photo}} />
+						<View style={styles.overlay} />
+					</TouchableOpacity>
+					);
+			})
+			callback(null, touchArray);
+			this.setState({touchableOpacityArray: touchArray});
+		} else {
+			callback('No array');
+			console.log('conz no touchableOpacityArray')
 		}
-      this.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
 	}
 
-	componentWillMount() {
-		// this.socket.onopen = () => {
-		// 	console.log('conz onopen::')
-		// }
-		this.connectSocket();
+	onMessageReceived() {
+		this.onLoadMessages();
 	}
 
 	componentDidMount() {
 		// console.log('conz', this.props.user)
-		this.socket.onopen = () => {
-			this.getUsers((userList) => {
-				// console.log('conz getUsers::', userList)
-				if(userList !== null) {
-					this.setState({userList: userList});
-					var touchArray = []
-					userList.forEach((user) => {
-						touchArray.push(
-							<TouchableOpacity 
-								style={styles.user}
-								onPress={() => { this.loadMessages(user.id); } }
-							>
-								<Text style={styles.username}>{user.name}</Text>
-								<Image style={styles.photo} source={{uri: user.photo}} />
-								<View style={styles.overlay} />
-							</TouchableOpacity>
-							);
-					})
-					this.setState({touchableOpacityArray: touchArray});
-				}
+		// this.props.socket.onmessage = () => {
+		// 		// console.log('conz getUsers::', userList)
+		// 	this.requestUserList((userList) => {
+		// 		this.setState({userList: userList})
+		// 		onGetUsers(this.state.userList);
+		// 	});
+		// }
 
-			});
-			
+		this.props.socket.onopen = () => {
+		  console.log('conz::onopen/main.js')
+		  this.props.socket.onmessage = (event) => {
+		    let data = JSON.parse(event.data);
+		    console.log('conz::onmessage/main.js', event)
+		    console.log('conz userList 1 ::', JSON.stringify(data.userList))
+
+		    switch (data.type) {
+		      
+		      case 'onLoadMessages':
+		        console.log('conz::onLoadMessages')
+		        this.onLoadMessages(data.messageBuffer, data.users);
+		        break;
+		      
+		      case 'onAddNode':
+		        // this.requestLoadMessages();
+		        break;
+		      
+		      case 'onMessageReceived':
+		        this.requestLoadMessages(this.state.selectedRecipient);
+		        break;
+		      
+		      case 'onGetUsers':
+		        console.log('conz userList 2 ::', data.userList)
+		        this.setState({userList: data.userList});
+		        // this.onGetUsers(data.userList);
+		        this.makeTouchableOpacity(this.state.userList, (err, res) => {
+		        	if (err) throw err;
+		        	console.log('conz touchable', res);
+		        	this.setState({touchableOpacityArray: res})
+		        })
+		        break;
+		      
+		      case 'onSendMessage':
+		        this.requestLoadMessages(this.state.selectedRecipient);
+		        break;
+
+		    }
+		  }
 		}
 
+
+/*		console.log('conz componentDidMount/message.js::', this.props.userList)
+		this.props.socket.onmessage = (event) => {
+			let data = JSON.parse(event.data);
+			console.log('conz :: onmessage/message.js', data)
+		}*/
+
+		// this.makeTouchableOpacity(this.props.userList);
 	}
+
+	// getTouchableOpacity(callback) {
+	// 	makeTouchableOpacity(this.state.userList, (err, res) => {
+	// 		if (err) callback(err);
+	// 		callback(null, res);
+	// 	})
+	// }
 
 	render() {
 		// console.log('conz3', this.state.userList, this.state.touchableOpacityArray)
