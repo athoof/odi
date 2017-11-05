@@ -33,11 +33,12 @@ export default class Message extends React.Component {
 			channel: 'lobby',
 		};
 
-		// this.props.socket = this.props.socket;
+		// this.socket = this.socket;
+    this.socket = new WebSocket('ws://faharu.com:8000');
 
 
 
-      // this.props.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
+      // this.socket = new WebSocket('ws://faharu.com:8000/?ch=' + this.state.channel);
 
   }
 
@@ -58,8 +59,8 @@ export default class Message extends React.Component {
 				timestamp : timestamp,
 			}
 		}
-		this.props.socket.send(JSON.stringify(request));
-		// this.props.socket.onmessage = (event) => {
+		this.socket.send(JSON.stringify(request));
+		// this.socket.onmessage = (event) => {
 		// 	let data = JSON.parse(event.data);
 		this.requestLoadMessages(this.state.selectedRecipient)
 
@@ -79,9 +80,9 @@ export default class Message extends React.Component {
 			user: this.props.user.id,
 		};
 		// console.log('conz req::', request)
-		this.props.socket.send(JSON.stringify(request));
+		this.socket.send(JSON.stringify(request));
 		console.log('conz :: requestUserList')
-		this.props.socket.onmessage = (event) => {
+		this.socket.onmessage = (event) => {
 			// console.log('conz :: getUsers:', event.data)
 			let data = JSON.parse(event.data);
 			// console.log('conz event.data::', data.userList);
@@ -104,7 +105,7 @@ export default class Message extends React.Component {
 			users: userArr ? userArr : this.state.users,
 		};
 
-		this.props.socket.send(JSON.stringify(request));
+		this.socket.send(JSON.stringify(request));
 	}
 
 
@@ -187,7 +188,7 @@ export default class Message extends React.Component {
 
 	componentDidMount() {
 		// console.log('conz', this.props.user)
-		// this.props.socket.onmessage = () => {
+		// this.socket.onmessage = () => {
 		// 		// console.log('conz getUsers::', userList)
 		// 	this.requestUserList((userList) => {
 		// 		this.setState({userList: userList})
@@ -195,12 +196,14 @@ export default class Message extends React.Component {
 		// 	});
 		// }
 
-		this.props.socket.onopen = () => {
-		  console.log('conz::onopen/main.js')
-		  this.props.socket.onmessage = (event) => {
+		
+
+		this.socket.onopen = () => {
+		  console.log('conz::onopen/message:8000');
+		  this.socket.onmessage = (event) => {
 		    let data = JSON.parse(event.data);
 		    console.log('conz::onmessage/main.js', event)
-		    console.log('conz userList 1 ::', JSON.stringify(data.userList))
+		    // console.log('conz userList 1 ::', JSON.stringify(data.userList))
 
 		    switch (data.type) {
 		      
@@ -218,12 +221,12 @@ export default class Message extends React.Component {
 		        break;
 		      
 		      case 'onGetUsers':
-		        console.log('conz userList 2 ::', data.userList)
+		        // console.log('conz userList 2 ::', data.userList)
 		        this.setState({userList: data.userList});
 		        // this.onGetUsers(data.userList);
 		        this.makeTouchableOpacity(this.state.userList, (err, res) => {
 		        	if (err) throw err;
-		        	console.log('conz touchable', res);
+		        	// console.log('conz touchable', res);
 		        	this.setState({touchableOpacityArray: res})
 		        })
 		        break;
@@ -238,7 +241,7 @@ export default class Message extends React.Component {
 
 
 /*		console.log('conz componentDidMount/message.js::', this.props.userList)
-		this.props.socket.onmessage = (event) => {
+		this.socket.onmessage = (event) => {
 			let data = JSON.parse(event.data);
 			console.log('conz :: onmessage/message.js', data)
 		}*/

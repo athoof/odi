@@ -61,7 +61,8 @@ export default class Main extends React.Component {
       }
     };
 
-    this.socket = new WebSocket('ws://faharu.com:8000');
+    this.socket = new WebSocket('ws://faharu.com:8888');
+    
     // console.log('conz user::', this.state.user);
 
 
@@ -102,48 +103,34 @@ export default class Main extends React.Component {
   onAddNode(socket) {
     socket.onmessage = (event) => {
       let data = JSON.parse(event.data);
-      if (data.type == 'onAddNode') {
-        this.setState({pathID: data.pathID, serverConnection: true})
-        // this.onAddNode(data.recipient, data.pathID);
-      }
+
     }
   }
   
-  requestUserList() {
-    let request = {
-      type: 'getUsers',
-      fromClient: this.state.user.id,
-      user: this.state.user.id,
-    };
-    // console.log('conz req::', request)
-    this.socket.send(JSON.stringify(request));
-    console.log('conz :: user.id', JSON.stringify(this.state.user.id))
-/*    this.socket.onopen = () => {
-      console.log('conz::onopen1')
-      let request = {
-        type: 'getUsers',
-        fromClient: user,
+  requestUserList(user) {
+    user = user ? user : this.state.user
+    if (user !== null) {
+      let request1 = {
+        type: 'userUpdate',
         user: user,
+      }
+      console.log('conz requestUserList()::userUpdate', user.id)
+      this.socket.send(JSON.stringify(request1));
+
+      let request2 = {
+        type: 'getUsers',
+        fromClient: this.state.user.id,
+        user: this.state.user.id,
       };
-      this.socket.send(JSON.stringify(request));
-      // this.onAddNode(this.socket);    
-    }*/
-    /*this.socket.onmessage = (event) => {
-      // console.log('conz :: getUsers:', event.data)
-      let data = JSON.parse(event.data);
-      // console.log('conz event.data::', data.userList);
-      this.setState({userList: data.userList});
-      console.log('conz data.userList', this.state.userList)
-    }*/
+      // console.log('conz req::', request)
+      this.socket.send(JSON.stringify(request2));
+      console.log('conz :: user.id', JSON.stringify(this.state.user.id))
+      
+    }
   }
 
   componentDidMount() {
     // this.socket = new WebSocket('ws://faharu.com:8000');
-    this._setupGoogleSignin();
-    if (this.state.user !== null) {
-      console.log('conz this.state.user ::', this.state.user)
-      this.requestUserList();
-    }
 
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
@@ -190,14 +177,16 @@ export default class Main extends React.Component {
       //distanceFilter sets location accuracy; 4 meters
     );
 
-
-
-
-    this.socket.onmessage = (event) => {
-      let data = JSON.parse(event.data);
-      if (data.type == 'onAddNode') {
-        this.setState({pathID: data.pathID, serverConnection: true})
-        // this.onAddNode(data.recipient, data.pathID);
+    this.socket.onopen = () => {
+      this._setupGoogleSignin();
+      console.log('conz::onopen/main:8888');
+      this.socket.onmessage = (event) => {
+        let data = JSON.parse(event.data);
+        console.log('conz Received a message...', data)
+        if (data.type == 'onAddNode') {
+          this.setState({pathID: data.pathID, serverConnection: true})
+          console.log('conz Received onAddNode :: ', data.pathID)
+        }
       }
     }
   }
@@ -285,19 +274,13 @@ export default class Main extends React.Component {
       this.setState({user: user});
       // console.log('conz::user.id::', JSON.stringify(user.id));
       if (typeof user !== 'undefined' & user !== null) {
-        // console.log('conz signed in ::', user.id);
-        this.requestUserList();
+        console.log('conz signed in ::', user.id);
+
+        this.requestUserList(user);
       }
-    /*      if (user) {
-        let request = {
-          type: 'userUpdate',
-          user: user,
-        }
-        this.socket.send(JSON.stringify(request));
-      }*/
     }
     catch(err) {
-      console.log("Play services error", err.code, err.message);
+      console.log("conz Play services error", err.code, err.message);
     }
   }
 
@@ -307,8 +290,10 @@ export default class Main extends React.Component {
       // console.log('conz user::', user.id);
       this.setState({user: user});
       if (typeof user !== 'undefined' & user !== null) {
-        this.requestUserList();
+        this.requestUserList(user);
       }
+
+
 /*      if (user) {
         let request = {
           type: 'userUpdate',
@@ -341,7 +326,7 @@ export default class Main extends React.Component {
 
   render() {
     
-    const messageBar = <Message user={this.state.user} socket={this.socket} userList={this.state.userList} />
+    const messageBar = <Message user={this.state.user} userList={this.state.userList} />
 
     if (!this.state.user) {
       return (
