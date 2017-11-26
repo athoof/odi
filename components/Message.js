@@ -227,26 +227,13 @@ export default class Message extends React.Component {
 		    }
 		  }
 		}
-
-
-/*		console.log('conz componentDidMount/message.js::', this.props.userList)
-		this.socket.onmessage = (event) => {
-			let data = JSON.parse(event.data);
-			console.log('conz :: onmessage/message.js', data)
-		}*/
-
-		// this.makeTouchableOpacity(this.props.userList);
 	}
 
-	// getTouchableOpacity(callback) {
-	// 	makeTouchableOpacity(this.state.userList, (err, res) => {
-	// 		if (err) callback(err);
-	// 		callback(null, res);
-	// 	})
-	// }
+	componentWillUnmount() {
+		this.socket.close();
+	}
 
 	render() {
-		// console.log('conz3', this.state.userList, this.state.touchableOpacityArray)
 		return (
 			<View style={styles.sidebar}>
 				<Text style={styles.label}>
@@ -272,6 +259,7 @@ export default class Message extends React.Component {
 					placeholder="Type a message"
 					onChangeText={(text) => {this.setState({text: text})} }
 					onSubmitEditing={() => { this.sendMessage(); }}
+					editable={this.state.selectedRecipient ? true : false}
 				/>
 			</View>
 		)

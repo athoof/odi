@@ -155,8 +155,16 @@ export default class Main extends React.Component {
     );
 
     //WebSocket listener
+    this.socketStart();
     this.setState({error: <Text>Connecting to Faharu...</Text>})
     this._setupGoogleSignin();
+    this.socket.onclose = () => {
+      this.socketStart();      
+    }
+  }
+
+
+  socketStart() {
     this.socket.onopen = () => {
       this.pinger();
       this.setState({error: null});
@@ -181,6 +189,7 @@ export default class Main extends React.Component {
 
   componentWillUnmount() {
     navigator.geolocation.clearWatch(this.watchID);
+    this.socket.close();
   }
 
   updateCurrent(pathCoordinates) {
