@@ -187,17 +187,6 @@ export default class Message extends React.Component {
 	}
 
 	componentDidMount() {
-		// console.log('conz', this.props.user)
-		// this.socket.onmessage = () => {
-		// 		// console.log('conz getUsers::', userList)
-		// 	this.requestUserList((userList) => {
-		// 		this.setState({userList: userList})
-		// 		onGetUsers(this.state.userList);
-		// 	});
-		// }
-
-		
-
 		this.socket.onopen = () => {
 		  console.log('conz::onopen/message:8000');
 		  this.socket.onmessage = (event) => {

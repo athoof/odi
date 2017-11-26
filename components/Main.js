@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   Button,
+  NetInfo,
 } from 'react-native';
 
 import MapView, { MAP_TYPES } from 'react-native-maps';
@@ -40,18 +41,16 @@ export default class Main extends React.Component {
     this.state = {
       user: null,
       userList: [],
-      // userList: [],
-      isOpen: true,
+      isOpen: false,
       selectedItem: 'About',
-      modalVisible: true,
-      anchorStatus: false,
       isRecording: false,
       serverConnection: false,
       pathCoordinates: [],
       latitude: null,
       longitude: null,
       followUser: true,
-      res: null,
+      ping: '- ',
+      error: null,
       nodeNumber: 0,
       region: {
         latitude: LATITUDE,
@@ -63,41 +62,6 @@ export default class Main extends React.Component {
 
     this.socket = new WebSocket('ws://faharu.com:8888');
     
-    // console.log('conz user::', this.state.user);
-
-
-/*    // workaround for React Native issues with some libraries (e.g. cuid, socket-io)
-    if (global.navigator && global.navigator.product === 'ReactNative') {
-        global.navigator.mimeTypes = '';
-        try {
-            global.navigator.userAgent = 'ReactNative';
-        }
-        catch (e) {
-            console.log('Tried to fake useragent, but failed. This is normal on some devices, you may ignore this error: ' + e.message);
-        }
-    }
-  }
-
-
-  // watchID: ?number = null;
-
-  componentWillMount() {
-
-
-
-/*      this.socket = new WebSocket('ws://faharu.com:8000');
-      this.socket.onopen = () => {
-        console.log('conz ::onopen')
-        this.setState({serverConnection: true})
-      }
-      // this.socket.addEventListener('message', (event) => {
-      //   console.log('conz message::', event);
-      // })
-      this.socket.onmessage = (event) => {
-        console.log('conz event::', event)
-        event = JSON.parse(event)
-      }*/
-
   }
 
   onAddNode(socket) {
@@ -129,9 +93,23 @@ export default class Main extends React.Component {
     }
   }
 
+  pinger() {
+    if (this.state.user)
+      setInterval(() => this.ping(), 1000);
+  }
+  ping() {
+    let date = new Date();
+    let time = date.getTime();
+    request = {
+      type: 'ping',
+      user: this.state.user,
+      pingTime: time,
+    }
+    this.socket.send(JSON.stringify(request));
+  }
+
   componentDidMount() {
     // this.socket = new WebSocket('ws://faharu.com:8000');
-
     console.log('*******componentDidMount() here*****');
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
@@ -151,15 +129,14 @@ export default class Main extends React.Component {
           this.addNode(latitude, longitude, timestamp);
           this.setState({
             pathCoordinates: pathCoordinates.concat(positionArray),
-            nodeNumber: this.state.nodeNumber+1
+            nodeNumber: this.state.nodeNumber + 1,
           })
         } else {
             this.setState({
               pathCoordinates: [],
-              nodeNumber: 0
+              nodeNumber: 0,
             })
         }
-        //on position change, move to location
 
         this.setState({
           latitude: latitude,
@@ -174,18 +151,29 @@ export default class Main extends React.Component {
       },
       (error) => this.setState({ error: error.message}),
       {enableHighAccuracy: true, timeout: 5000, maximumAge: 500, distanceFilter: 10}
-      //distanceFilter sets location accuracy; 4 meters
+      //distanceFilter sets location accuracy; 10 meters
     );
 
+    //WebSocket listener
+    this.setState({error: <Text>Connecting to Faharu...</Text>})
+    this._setupGoogleSignin();
     this.socket.onopen = () => {
-      this._setupGoogleSignin();
+      this.pinger();
+      this.setState({error: null});
       console.log('conz::onopen/main:8888');
       this.socket.onmessage = (event) => {
         let data = JSON.parse(event.data);
         console.log('conz Received a message...', data)
-        if (data.type == 'onAddNode') {
-          this.setState({pathID: data.pathID, serverConnection: true})
-          console.log('conz Received onAddNode :: ', data.pathID)
+        switch (data.type) {
+          case 'onAddNode':
+            this.setState({pathID: data.pathID})
+            console.log('conz Received onAddNode :: ', data.pathID)
+            break;
+
+          case 'pong':
+            this.setState({ping: data.pongTime})
+            console.log('conz pong::' + data.pongTime)
+            break;
         }
       }
     }
@@ -199,41 +187,15 @@ export default class Main extends React.Component {
 
   }
 
-/*  fitCoords(region) {
-    this.map.fitToCoordinates(region, {
-      edgePadding: DEFAULT_PADDING,
-      animated: true,
-    });
-  }*/
-
-/*  onRegionChange(region) {
-    this.setState({ region });
-  }
-*/
-/*  jumpRandom() {
-    this.setState({ region: this.regionNow() });
-  }*/
-/*
-  goToCurrentLocation() {
-    this.map.animateToRegion(this.regionNow());
-  }*/
-
   onToggleFollow() {
     this.setState({ followUser: !this.state.followUser })
   }
-
-/*  startButton() { //unused?
-    if (!this.state.isRecording) {
-      this.setState({ isRecording: true})
-    }
-  }*/
 
   recordButton() {
     this.setState({ isRecording: !this.state.isRecording, nodeNumber: 0 });
   }
 
   addNode(latitude, longitude, timestamp) {
-    // this.setState({ serverConnection: true })
     let request = {
       type: 'addNode',
       pathID: typeof this.state.pathID !== undefined ? this.state.pathID : null,
@@ -253,8 +215,6 @@ export default class Main extends React.Component {
     return {
       latitude: this.state.latitude,
       longitude: this.state.longitude,
-      // heading: this.state.heading,
-      // speed: this.state.speed,
       latitudeDelta: LATITUDE_DELTA,
       longitudeDelta: LONGITUDE_DELTA,
     };
@@ -270,9 +230,7 @@ export default class Main extends React.Component {
       });
 
       const user = await GoogleSignin.currentUserAsync();
-      // this.requestUserList(JSON.stringify(user.id));
       this.setState({user: user});
-      // console.log('conz::user.id::', JSON.stringify(user.id));
       if (typeof user !== 'undefined' & user !== null) {
         console.log('conz signed in ::', user.id);
 
@@ -281,30 +239,21 @@ export default class Main extends React.Component {
     }
     catch(err) {
       console.log("conz Play services error", err.code, err.message);
+      this.setState({error: <Text>Error: {JSON.stringify(err.message.name)}</Text>})
     }
   }
 
   _signIn() {
     GoogleSignin.signIn()
     .then((user) => {
-      // console.log('conz user::', user.id);
       this.setState({user: user});
       if (typeof user !== 'undefined' & user !== null) {
         this.requestUserList(user);
       }
-
-
-/*      if (user) {
-        let request = {
-          type: 'userUpdate',
-          user: user,
-        }
-        this.socket.send(JSON.stringify(request));
-      }*/
-      // this.setState({modalVisible: false})
     })
     .catch((err) => {
       console.log('WRONG SIGNIN', err);
+      this.setState({error: <Text>Something went wrong, please try again</Text>});
     })
     .done();
   }
@@ -325,17 +274,20 @@ export default class Main extends React.Component {
   }
 
   render() {
-    
     const messageBar = <Message user={this.state.user} userList={this.state.userList} />
-
+    const recordingButton = {
+      backgroundColor: this.state.isRecording ? 'rgba(209, 31, 80, 0.8)' : 'rgba(40, 45, 58, 0.5)',
+    }
+    
     if (!this.state.user) {
       return (
-        <View style={styles.container}>
+        <View style={styles.signin}>
           <GoogleSigninButton
-            style={{width: 230, height: 48, margin: 0}}
+            style={{width: 230, height: 48, margin: 50, }}
             size={GoogleSigninButton.Size.Standard}
-            color={GoogleSigninButton.Color.Dark}
+            color={GoogleSigninButton.Color.Light}
             onPress={this._signIn.bind(this)}/>
+          {this.state.error}
         </View>
       )
     }
@@ -387,22 +339,21 @@ export default class Main extends React.Component {
                   onPress={ () => this.onToggleFollow() }
                   style={[styles.bubble, styles.button]}
                 >
-                  <Text>Follow: {this.state.followUser ? 'On' : 'Off'}</Text>
+                  <Text style={{fontSize: 18, color: 'white', textAlign: 'center',}}>Follow:{"\n"}{this.state.followUser ? '✔️' : '❌'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={ () => this.recordButton() }
-                  style={[styles.bubble, styles.button]}
+                  style={[styles.bubble, styles.button, recordingButton]}
                 >
-                  {this.state.isRecording ? <Text>Stop</Text> : <Text>Begin</Text>}
+                  {this.state.isRecording ? <Text style={{padding: 4, textAlign: 'center', fontSize: 40, color: 'black'}}>■</Text> : <Text style={{padding: 4, textAlign: 'center', fontSize: 40, color: 'red'}}>◉</Text>}
                 </TouchableOpacity>
               </View>
-              <View style={[styles.bubble, styles.latlng]}>
-                <Text style={{ textAlign: 'center' }}>
-                  Latitude: {this.state.latitude},{"\n"}
-                  Longitude: {this.state.longitude},{"\n"}
-                  Recording: {this.state.isRecording ? 'ON' : 'OFF'},{"\n"}
-                  Server: {this.state.serverConnection ? 'Connected' : 'Disconnected'},{"\n"}
-                  User: {this.state.user ? this.state.user.name : 'Not signed in'}{"\n"}
+              <View style={[styles.statView, styles.latlng]}>
+                <Text style={[styles.textStyle]}>
+                  Latitude: {this.state.latitude}{"\n"}
+                  Longitude: {this.state.longitude}{"\n"}
+                  Ping: {this.state.ping}ms{"\n"}
+                  {this.state.error == null ? 'Signed in as: ' + this.state.user.name : 'Disconnected'} 
                 </Text>
               </View>
             </View>
@@ -413,28 +364,7 @@ export default class Main extends React.Component {
     }
   }
 }
-/*
-<Modal style={styles.modal}
-  animationType={"slide"}
-  transparent={false}
-  visible={this.state.modalVisible}
-  onRequestClose={() => {alert("Sign in to proceed")}}
-  >
-  <View style={styles.signin}>
-    <View style={{marginTop:2}}>              
-        <GoogleSigninButton
-          style={{width: 230, height: 48, margin: 0}}
-          size={GoogleSigninButton.Size.Standard}
-          color={GoogleSigninButton.Color.Dark}
-          onPress={this._signIn.bind(this)}/>
-    </View>
-  </View>
-</Modal>*/
 
-//<TouchableOpacity
-//                onPress={ () => this.setState({modalVisible: !this.state.modalVisible}) }
-//              >
-//              </TouchableOpacity>
 
 Main.propTypes = {
   provider: MapView.ProviderPropType,
@@ -442,57 +372,57 @@ Main.propTypes = {
 };
 
 const styles = StyleSheet.create({
-  modal: {
-    ...StyleSheet.absoluteFillObject,
-
-  },
-
-  hamburger: {
-    zIndex: 20,
-    color: 'red'
-
-  },
-
   panel: {
+    flexDirection: 'column',
     alignItems: 'center',
+    alignSelf: 'stretch',
   },
-
+  textStyle:{
+    textAlign: 'left', 
+    color: '#E6E6E6',
+  },
   container: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     alignItems: 'center',
-
+  },
+  signin: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    backgroundColor: '#3F8D89',
+    alignItems: 'center',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
     zIndex: -1,
   },
-  signin: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(133,133,133,0.7)',
-    padding: 15,
-    margin: 0,
-    justifyContent: 'space-around',
+  statView: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(40, 45, 58, 0.8)',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    alignSelf: 'stretch',
   },
   bubble: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    backgroundColor: 'rgba(40, 45, 58, 0.5)',
+    // paddingHorizontal: 18,
+    // paddingVertical: 12,
     borderRadius: 20,
   },
   latlng: {
-    width: 300,
-    alignItems: 'stretch',
+    alignSelf: 'stretch',
   },
   button: {
-    width: 100,
-    paddingHorizontal: 12,
-    alignItems: 'center',
+    width: 80,
+    padding: 0,
     marginHorizontal: 10,
 
   },
   buttonContainer: {
     flexDirection: 'row',
+    color: '#fff',
     marginVertical: 5,
     backgroundColor: 'transparent',
   },
