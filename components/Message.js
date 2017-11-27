@@ -163,16 +163,18 @@ export default class Message extends React.Component {
 			this.setState({userList: userList});
 			var touchArray = []
 			userList.forEach((user) => {
-				touchArray.push(
-					<TouchableOpacity 
-						style={styles.user}
-						onPress={() => { this.selectRecipient(user.id); } }
-					>
-						<Text style={styles.username}>{user.name}</Text>
-						<Image style={styles.photo} source={{uri: user.photo}} />
-						<View style={styles.overlay} />
-					</TouchableOpacity>
-					);
+				if (user.id !== this.props.user.id) {
+					touchArray.push(
+						<TouchableOpacity 
+							style={styles.user}
+							onPress={() => { this.selectRecipient(user.id); } }
+						>
+							<Text style={styles.username}>{user.name}</Text>
+							<Image style={styles.photo} source={{uri: user.photo}} />
+							<View style={styles.overlay} />
+						</TouchableOpacity>
+						);
+				}
 			})
 			callback(null, touchArray);
 			this.setState({touchableOpacityArray: touchArray});

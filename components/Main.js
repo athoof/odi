@@ -95,9 +95,9 @@ export default class Main extends React.Component {
 
   pinger() {
     if (this.state.user)
-      setInterval(() => this.ping(), 1000);
+      setInterval(() => this.ping(), 400);
   }
-  ping() {
+  async ping() {
     let date = new Date();
     let time = date.getTime();
     request = {
@@ -106,11 +106,22 @@ export default class Main extends React.Component {
       pingTime: time,
     }
     this.socket.send(JSON.stringify(request));
+    // this.setState({ping: '-'});
   }
 
   componentDidMount() {
     // this.socket = new WebSocket('ws://faharu.com:8000');
     console.log('*******componentDidMount() here*****');
+
+        //WebSocket listener
+    this.setState({error: <Text>Connecting to Faharu...</Text>})
+    this._setupGoogleSignin();
+    this.socketStart();
+    this.socket.onclose = () => {
+      this.setState({error: <Text>Disconnected!</Text>});
+      this.socketStart();      
+    }
+
     this.watchID = navigator.geolocation.watchPosition(
       (position) => {
         const { pathCoordinates } = this.state
@@ -154,21 +165,43 @@ export default class Main extends React.Component {
       //distanceFilter sets location accuracy; 10 meters
     );
 
-    //WebSocket listener
-    this.socketStart();
-    this.setState({error: <Text>Connecting to Faharu...</Text>})
-    this._setupGoogleSignin();
-    this.socket.onclose = () => {
-      this.socketStart();      
-    }
+
   }
 
+  keepAlive() {
+    let d = new Date();
+    let t = d.getTime();
+    console.log('conz this should be T :::' + t)
+    let request = {
+      type: 'isAlive', 
+      user: this.state.user,
+      latitude: this.state.latitude,
+      longitude: this.state.longitude,
+      timestamp: t,
+    };
+    this.socket.send(JSON.stringify(request))
+  }
 
   socketStart() {
+    this.setState({error: null});
     this.socket.onopen = () => {
-      this.pinger();
-      this.setState({error: null});
       console.log('conz::onopen/main:8888');
+
+
+      const locationUpdate = setInterval(() => {
+        let d = new Date();
+        let t = d.getTime();
+        console.log('conz this should be T :::' + t)
+        let request = {
+          type: 'isAlive', 
+          user: this.state.user,
+          latitude: this.state.latitude,
+          longitude: this.state.longitude,
+          timestamp: t,
+        };
+        this.socket.send(JSON.stringify(request))
+      }, 120000);
+
       this.socket.onmessage = (event) => {
         let data = JSON.parse(event.data);
         console.log('conz Received a message...', data)
@@ -178,9 +211,13 @@ export default class Main extends React.Component {
             console.log('conz Received onAddNode :: ', data.pathID)
             break;
 
-          case 'pong':
-            this.setState({ping: data.pongTime})
-            console.log('conz pong::' + data.pongTime)
+          case 'ping':
+            let currentDate = new Date();
+            let currentTime = currentDate.getTime();
+            let latency = currentTime - data.ping;
+            latency = Math.abs(latency);
+            this.setState({ping: latency})
+            console.log('conz pong::' + latency)
             break;
         }
       }
@@ -214,6 +251,7 @@ export default class Main extends React.Component {
       user: this.state.user,
       nodeNumber: this.state.nodeNumber,
       timestamp: timestamp,
+      ping: this.state.ping,
      };
 
     this.socket.send(JSON.stringify(request));
