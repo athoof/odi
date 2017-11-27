@@ -200,7 +200,7 @@ export default class Main extends React.Component {
           timestamp: t,
         };
         this.socket.send(JSON.stringify(request))
-      }, 120000);
+      }, 5000);
 
       this.socket.onmessage = (event) => {
         let data = JSON.parse(event.data);
