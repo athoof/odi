@@ -167,21 +167,6 @@ export default class Main extends React.Component {
 
 
   }
-
-  keepAlive() {
-    let d = new Date();
-    let t = d.getTime();
-    console.log('conz this should be T :::' + t)
-    let request = {
-      type: 'isAlive', 
-      user: this.state.user,
-      latitude: this.state.latitude,
-      longitude: this.state.longitude,
-      timestamp: t,
-    };
-    this.socket.send(JSON.stringify(request))
-  }
-
   socketStart() {
     this.setState({error: null});
     this.socket.onopen = () => {
@@ -286,7 +271,7 @@ export default class Main extends React.Component {
     }
     catch(err) {
       console.log("conz Play services error", err.code, err.message);
-      this.setState({error: <Text>Error: {JSON.stringify(err.message.name)}</Text>})
+      // this.setState({error: <Text>Error: {JSON.stringify(err.message)}</Text>})
     }
   }
 
@@ -400,7 +385,7 @@ export default class Main extends React.Component {
                   Latitude: {this.state.latitude}{"\n"}
                   Longitude: {this.state.longitude}{"\n"}
                   Ping: {this.state.ping}ms{"\n"}
-                  {this.state.error == null ? 'Signed in as: ' + this.state.user.name : 'Disconnected'} 
+                  {this.state.error == null ? 'Signed in as: ' + this.state.user.name : this.state.error} 
                 </Text>
               </View>
             </View>
