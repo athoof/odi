@@ -14,7 +14,6 @@ import {
 import MapView, { MAP_TYPES } from 'react-native-maps';
 import _ from 'lodash';
 import pick from 'lodash/pick';
-import { withConnection, connectionShape } from 'react-native-connection-info';
 import {GoogleSignin, GoogleSigninButton} from 'react-native-google-signin';
 
 import SideMenu from 'react-native-side-menu';
@@ -301,10 +300,6 @@ export default class Main extends React.Component {
     this.setState({ isOpen })
   }
 
-  openSidebar() {
-    this.setState({isOpen: true});
-  }
-
   render() {
     const messageBar = <Message user={this.state.user} userList={this.state.userList} />
     const recordingButton = {
@@ -332,17 +327,19 @@ export default class Main extends React.Component {
       return (
         <SideMenu
           menuPosition={'right'}
-          style={styles.sidebar}
           menu={messageBar}
           isOpen={this.state.isOpen}
           onChange={isOpen => this.toggleSidebar(isOpen)}
-          // hiddenMenuOffset={16}
-          // openMenuOffset={0}
           bounceBackOnOverdraw={true}
           autoClosing={false}
         >
           <View style={styles.container}>
-
+            <TouchableOpacity
+              onPress={ () => this.setState({isOpen: !this.state.isOpen}) }
+              style={styles.openMessagingBtn}
+            >
+              <Text style={{textAlign: 'center', verticalAlign: 'center', color: 'rgba(55,55,55,0.4)', padding: 'auto',}}>⬤⬤⬤⬤⬤⬤⬤⬤⬤⬤⬤⬤</Text>
+            </TouchableOpacity>
             <MapView
               provider={this.props.provider}
               ref={ref => { this.map = ref; }}
@@ -400,7 +397,6 @@ export default class Main extends React.Component {
 
 Main.propTypes = {
   provider: MapView.ProviderPropType,
-  connection: connectionShape,
 };
 
 const styles = StyleSheet.create({
@@ -417,6 +413,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    // borderRightWidth: 2,
+    // borderRightColor: 'red',
   },
   signin: {
     ...StyleSheet.absoluteFillObject,
@@ -427,6 +425,7 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
     zIndex: -1,
+
   },
   statView: {
     paddingHorizontal: 12,
@@ -450,13 +449,21 @@ const styles = StyleSheet.create({
     width: 80,
     padding: 0,
     marginHorizontal: 10,
-
   },
   buttonContainer: {
     flexDirection: 'row',
     color: '#fff',
     marginVertical: 5,
     backgroundColor: 'transparent',
+  },
+  openMessagingBtn: {
+    alignSelf: 'flex-end',
+    marginVertical: 0,
+    marginRight: 8,
+    height: 105,
+    width: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(40, 45, 58, 0.5)',
   },
 });
 

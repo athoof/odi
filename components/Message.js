@@ -60,8 +60,6 @@ export default class Message extends React.Component {
 			}
 		}
 		this.socket.send(JSON.stringify(request));
-		// this.socket.onmessage = (event) => {
-		// 	let data = JSON.parse(event.data);
 		this.requestLoadMessages(this.state.selectedRecipient)
 
 		// }
@@ -72,25 +70,6 @@ export default class Message extends React.Component {
 	clearBuffer() {
 		this.setState({messageBuffer: [], messageBufferParsed: []});
 	}
-/*
-	requestUserList() {
-		let request = {
-			type: 'getUsers',
-			fromClient: this.props.user.id,
-			user: this.props.user.id,
-		};
-		// console.log('conz req::', request)
-		this.socket.send(JSON.stringify(request));
-		console.log('conz :: requestUserList')
-		this.socket.onmessage = (event) => {
-			// console.log('conz :: getUsers:', event.data)
-			let data = JSON.parse(event.data);
-			// console.log('conz event.data::', data.userList);
-			this.setState({userList: data.userList});
-			console.log('conz data.userList', this.state.userList)
-		}
-	}
-*/
 
 	requestLoadMessages(selectedRecipient) {
 		let userArr = [this.props.user.id, selectedRecipient];
