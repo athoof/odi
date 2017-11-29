@@ -13,7 +13,8 @@
       },
       "oauth_client": [
         {
-          "client_id": "895298796941-2p3ijkbqnv7ttgigc9vu902h0hsj1ucl.apps.googleusercontent.com",
+          // "client_id": "895298796941-2p3ijkbqnv7ttgigc9vu902h0hsj1ucl.apps.googleusercontent.com",//debug
+          "client_id": "895298796941-ascgnd7n2e5svuef5hmv28s5h7q2d7gh.apps.googleusercontent.com",//release
           "client_type": 1,
           "android_info": {
             "package_name": "com.odi",
